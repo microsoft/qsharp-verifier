@@ -26,7 +26,7 @@ When building F* from source, we recommend using the `everest` script from [Proj
 
 ## Demo
 
-You can convert the [Examples.qs](qstar/examples/Examples.qs) file into Q\* instruction trees by running `dotnet build` from the `star/examples` directory.
+You can convert the [Examples.qs](qstar/examples/Examples.qs) file into Q\* instruction trees by running `dotnet build` from the `qstar/examples` directory.
 A prettified excerpt from the output is in [Demo.fst](qstar/examples/Demo.fst).
 You should be able to type check this file in F*, indicating that our Q# definitions satisfy basic well-formedness properties.
 Proofs about the semantics of the example programs are in [DemoProofs.fst](qstar/examples/DemoProofs.fst).
