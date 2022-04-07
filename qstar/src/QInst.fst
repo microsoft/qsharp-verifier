@@ -15,8 +15,10 @@ let post a = a -> valid_qmap -> valid_qmap -> prop
 let trivpre : pre = fun _ -> True
 let eqpost #a : post a = fun _ s0 s1 -> s0 == s1
 
-// probability of this result + index into a random stream + quantum state
-let state (n:nat) = real & nat & qstate n
+// quantum state + index into a random boolean stream
+// NOTE: rather than an index, we could pass around a source of 
+//       nondeterminism directly
+let state (n:nat) = qstate n & nat
 
 // type for functions defining an instruction's semantics
 type sem_ty (a:Type) (pre:pre) (post:post a) =
@@ -28,12 +30,27 @@ type sem_ty (a:Type) (pre:pre) (post:post a) =
 // In order for semantic function f to have an adjoint, we require that:
 // * f's return type is unit
 // * f's postcondition is eqpost
+// TODO: check with Sarah - what are the requirements in Q# for an
+//       operation to be controllable/adjointable? Are classical
+//       parameters allowed? Non-unit return types? Qubit allocation?
 let is_adj (pre:pre) (f:sem_ty unit pre eqpost) (fadj:sem_ty unit pre eqpost) : prop =
   forall m0 bs s0. 
     let (| _, m1, s1 |) = f m0 bs s0 in
     let (| _, m2, s2 |) = fadj m1 bs s1 in
     s0 == s2
-  
+
+// TODO: generalize to a list of controls
+let is_ctl (pre:pre) (f:sem_ty unit pre eqpost) (fctl:qref -> sem_ty unit pre eqpost) : prop =
+  forall q m0 bs s0. 
+    let (qs0, n0) = s0 in
+    let (| _, m1, (qs1, n1) |) = f m0 bs s0 in
+    let (| _, m2, (qs2, n2) |) = fctl q m0 bs s0 in
+    n1 == n2 /\ 
+    (in_1q_classical_state (sel m0 q) Zero qs0 ==> qs0 == qs2) /\
+    (in_1q_classical_state (sel m0 q) One qs0 ==> 
+       in_1q_classical_state (sel m0 q) One qs2 /\
+       qs1 == qs2) // the rest of qs2 is the same as qs1
+
 noeq
 type inst (a:Type) = {
  
@@ -52,14 +69,19 @@ type inst (a:Type) = {
                       is_adj pre sem (Some?.v adj)));
                           
    // optional implementation of control
-   // TODO
+   ctl: option (sem_ty a pre post);
+   ctl_pf: squash (Some? ctl ==> 
+                     (a == unit /\ 
+                      eqpost == post /\ 
+                      is_adj pre sem (Some?.v adj)));
+                          
 }
 
 /// Example instructions
 
 let had (q:qref) : inst unit = 
   let sem : sem_ty unit (fun s -> live s q) eqpost =
-    fun s0 _ (p, n, qs) -> (| (), s0, (p, n, apply_H (sel s0 q) qs) |) in
+    fun s0 _ (qs, n) -> (| (), s0, (apply_H (sel s0 q) qs, n) |) in
 { 
   pre = (fun s -> live s q);
   post = eqpost;
@@ -70,7 +92,7 @@ let had (q:qref) : inst unit =
 
 let pauli_x (q:qref) : inst unit = 
   let sem : sem_ty unit (fun s -> live s q) eqpost =
-    fun s0 _ (p, n, qs) -> (| (), s0, (p, n, apply_X (sel s0 q) qs) |) in
+    fun s0 _ (qs, n) -> (| (), s0, (apply_X (sel s0 q) qs, n) |) in
 { 
   pre = (fun (s:valid_qmap) -> live s q);
   post = eqpost;
@@ -81,7 +103,7 @@ let pauli_x (q:qref) : inst unit =
 
 let pauli_z (q:qref) : inst unit = 
   let sem : sem_ty unit (fun s -> live s q) eqpost =
-    fun s0 _ (p, n, qs) -> (| (), s0, (p, n, apply_Z (sel s0 q) qs) |) in
+    fun s0 _ (qs, n) -> (| (), s0, (apply_Z (sel s0 q) qs, n) |) in
 { 
   pre = (fun (s:valid_qmap) -> live s q);
   post = eqpost;
@@ -92,9 +114,9 @@ let pauli_z (q:qref) : inst unit =
 
 let t_rot (q:qref) : inst unit = 
   let sem : sem_ty unit (fun s -> live s q) eqpost =
-    fun s0 _ (p, n, qs) -> (| (), s0, (p, n, apply_T (sel s0 q) qs) |) in
+    fun s0 _ (qs, n) -> (| (), s0, (apply_T (sel s0 q) qs, n) |) in
   let adj : sem_ty unit (fun s -> live s q) eqpost =
-    fun s0 _ (p, n, qs) -> (| (), s0, (p, n, apply_TDG (sel s0 q) qs) |) in  
+    fun s0 _ (qs, n) -> (| (), s0, (apply_TDG (sel s0 q) qs, n) |) in  
 { 
   pre = (fun (s:valid_qmap) -> live s q);
   post = eqpost;
@@ -105,9 +127,9 @@ let t_rot (q:qref) : inst unit =
 
 let s_rot (q:qref) : inst unit = 
   let sem : sem_ty unit (fun s -> live s q) eqpost =
-    fun s0 _ (p, n, qs) -> (| (), s0, (p, n, apply_S (sel s0 q) qs) |) in
+    fun s0 _ (qs, n) -> (| (), s0, (apply_S (sel s0 q) qs, n) |) in
   let adj : sem_ty unit (fun s -> live s q) eqpost =
-    fun s0 _ (p, n, qs) -> (| (), s0, (p, n, apply_SDG (sel s0 q) qs) |) in
+    fun s0 _ (qs, n) -> (| (), s0, (apply_SDG (sel s0 q) qs, n) |) in
 { 
   pre = (fun (s:valid_qmap) -> live s q);
   post = eqpost;
@@ -118,8 +140,8 @@ let s_rot (q:qref) : inst unit =
 
 let cnot (q0 q1:qref) : inst unit = 
   let sem : sem_ty unit (fun s -> live s q0 /\ live s q1 /\ q0 <> q1) eqpost =
-    fun s0 _ (p, n, qs) -> 
-      (| (), s0, (p, n, apply_CNOT (sel s0 q0) (sel s0 q1) qs) |) in
+    fun s0 _ (qs, n) -> 
+      (| (), s0, (apply_CNOT (sel s0 q0) (sel s0 q1) qs, n) |) in
 { 
   pre = (fun s -> live s q0 /\ live s q1 /\ q0 <> q1);
   post = eqpost;
@@ -130,28 +152,30 @@ let cnot (q0 q1:qref) : inst unit =
 
 let cz (q0 q1:qref) : inst unit = 
   let sem : sem_ty unit (fun s -> live s q0 /\ live s q1 /\ q0 <> q1) eqpost =
-    fun s0 _ (p, n, qs) -> 
-      (| (), s0, (p, n, apply_CZ (sel s0 q0) (sel s0 q1) qs) |) in
+    fun s0 _ (qs, n) -> 
+      (| (), s0, (apply_CZ (sel s0 q0) (sel s0 q1) qs, n) |) in
 { 
   pre = (fun s -> live s q0 /\ live s q1 /\ q0 <> q1);
   post = eqpost;
   sem = sem;
   adj = Some sem;
-  adj_pf = ()
+  adj_pf = ();
 } 
 
 let meas (q:qref) : inst result = 
 { 
   pre = (fun (s:valid_qmap) -> live s q);
   post = eqpost;
-  sem = (fun s0 bs (p, n, qs) ->
+  sem = (fun s0 bs (qs, n) ->
     if (bs n) 
     then let (p', qs') = measure (sel s0 q) Zero qs in
-         (| Zero, s0, (p *. p', n + 1, qs') |)
+         (| Zero, s0, (qs', n + 1) |)
     else let (p', qs') = measure (sel s0 q) One qs in
-         (| One, s0, (p *. p', n + 1, qs') |));
+         (| One, s0, (qs', n + 1) |));
   adj = None;
-  adj_pf = ()
+  adj_pf = ();
+  ctl = None;
+  ctl_pf = ();
 }
 
 let init : inst qref = 
@@ -160,23 +184,25 @@ let init : inst qref =
   post = (fun q s0 s1 -> q == fst (extend s0) /\
                       s1 == snd (extend s0));
   sem = (fun s0 _ st ->
-    let (p, n, qs) = st in
+    let (qs, n) = st in
     let (q, s0') = extend s0 in
-    (| q , s0' , (p, n, init qs) |));
+    (| q , s0' , (init qs, n) |));
   adj = None;
-  adj_pf = ()
+  adj_pf = ();
+  ctl = None;
+  ctl_pf = ();
 }
 
 let discard : inst unit = 
 { 
   pre = (fun s -> size_of s > 0 == true);
   post = (fun _ s0 s1 -> size_of s0 > 0 /\ shrink s0 == s1);
-  sem = (fun s0 _ (p, n, qs) -> 
-    (| () , shrink s0 , (p, n, discard qs) |));
-    // TODO: technically, p might change
-
+  sem = (fun s0 _ (qs, n) -> 
+    (| () , shrink s0 , (discard qs, n) |));
   adj = None;
-  adj_pf = ()
+  adj_pf = ();
+  ctl = None;
+  ctl_pf = ();
 }
 
 noeq
