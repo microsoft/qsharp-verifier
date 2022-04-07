@@ -112,3 +112,86 @@ let qstar_heap_pcm : pcm qstate =
   refine = (fun qs -> qs.frac == Some Frac.full_perm)
 }
 #pop-options
+
+let applyH_fpupd (#qs:qbits)
+                 (#perm:_)
+                 (#qstate_init:_)
+                 (q:qbit{mem q qs})
+   : frame_preserving_upd qstar_heap_pcm
+                          ({frac=Some perm; qs=qs; state=qstate_init})
+                          ({frac=Some perm; qs=qs; state=(QState.applyH #qs q qstate_init)})
+   = fun v ->
+      assert (
+          qstar_heap_pcm.refine v /\
+          PCM.compatible qstar_heap_pcm ({frac=Some perm; qs=qs; state=qstate_init}) v
+      );
+      // (1) v.state = qstate_init `tensor` rest
+      let init_knowledge = {frac=Some perm; qs=qs; state=qstate_init} in
+      let vst : qvec v.qs = v.state in
+      assert (exists frame_qs'. frame_qs' `disjoint` qs /\
+                           (frame_qs' `union` qs == v.qs));
+      assert (exists (frame: qstate).
+                PCM.composable qstar_heap_pcm init_knowledge frame /\
+                PCM.op qstar_heap_pcm frame init_knowledge == v /\
+                frame.state `tensor` qstate_init == v.state);
+
+      applyH q : qvec qs -> qvec qs
+      lift qs
+           (qs':_{qs' `disjoint` qs})
+           (op: qvec qs -> qvec qs) : qvec (qs `union` qs') -> qvec (qs `union` qs')
+
+    { i = (v:qvec qs) `tensor` (v':qvec qs') }
+      lift qs qs' op i
+    { i = (op v:qvec qs) `tensor` (v':qvec qs') }
+
+      admit()
+      // (2) vnew = {v with state (applyH q qstate_init) `tensor` rest }
+      // (3) prove that vnew
+      //     - is a "full" value
+      //     - it's compatible with ({frac=Some perm; qs=qs; state=(QState.applyH #qs q qstate_init)})
+      //     - and that it preserves all frames that were composaible with the initial knowledge (qs -> qstate_init)
+
+
+      admit()
+
+
+         } )
+
+
+val applyH_raw (#qs:qbits)
+               (#perm:_)
+               (#qstate_init:qvec qs)
+               (q:qbit{mem q qs})
+               (qref: Ref.ref qstar_heap_pcm)
+  : ST unit
+    (Ref.pts_to qref
+        ({frac=Some perm; qs=qs; state=qstate_init}))
+    (fun _ ->
+       Ref.pts_to qref
+        ({frac=Some perm;
+          qs=qs;
+          state=(QState.applyH #qs q qstate_init)})
+
+
+let pts_to (qs:qbits) (qv:qvec qs)
+  : vprop
+  = exists_ (fun p ->
+    Ref.pts_to qstar_heap_ref
+             ({frac = Some p;
+               qs = qs;
+               state = qv})
+
+let applyH (#qs:qbits)
+           (#perm:_)
+           (#qstate_init:qvec qs)
+           (q:qbit{mem q qs})
+  : ST unit
+    (qs `pts_to` qstate_init)
+    (fun _ ->
+      qs `pts_to` (QState.applyH q qstate_init))
+   =
+
+module Ref = Steel.ST.PCMReference
+
+val qstar_heap_ref
+  : Ref.ref qstar_heap_pcm
