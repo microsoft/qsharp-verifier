@@ -1,4 +1,4 @@
-module QState
+module QVec
 
 open FStar.Mul
 //open FStar.Real

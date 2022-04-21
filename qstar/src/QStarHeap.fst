@@ -4,7 +4,7 @@ open FStar.OrdSet
 open FStar.Real
 module Frac = Steel.FractionalPermission
 
-open QState
+open QVec
 
 noeq
 type qstate = {
@@ -113,18 +113,46 @@ let qstar_heap_pcm : pcm qstate =
 }
 #pop-options
 
+assume // TODO
+val lift : (qs:qbits) -> (qs':qbits{qs' `disjoint` qs}) -> (qvec qs -> qvec qs) -> 
+           qvec (qs `union` qs') -> qvec (qs `union` qs')
+
+let lemma_minus_disjoint (#a:eqtype) (#f:cmp a) (s1:ordset a f) (s2:ordset a f) 
+  : Lemma (requires True)
+          (ensures (disjoint (s2 `minus` s1) s1))
+          [SMTPat (disjoint (s2 `minus` s1) s1)]
+  = admit()
+
+let lemma_subset_union_minus (#a:eqtype) (#f:cmp a) (s1:ordset a f) (s2:ordset a f) 
+  : Lemma (requires (s1 `subset` s2))
+          (ensures (s1 `union` (s2 `minus` s1) == s2))
+          [SMTPat (s1 `union` (s2 `minus` s1))]
+  = admit()
+
+// rephrasing lift above
+let lift' (qs:qbits) (qs':qbits{qs `subset` qs'}) (op:qvec qs -> qvec qs) 
+  : qvec qs' -> qvec qs'
+  = lift qs (qs' `minus` qs) op
+
+let lift_preserves_frame (qs:qbits) (qs':qbits{qs' `disjoint` qs}) (op:qvec qs -> qvec qs) 
+                         (v : qvec qs) (v' : qvec qs')
+  : Lemma (ensures (lift qs qs' op (v `tensor` v') == op v `tensor` v'))
+          [SMTPat (lift qs qs' op (v `tensor` v'))]
+  = admit()
+
 let applyH_fpupd (#qs:qbits)
                  (#perm:_)
                  (#qstate_init:_)
                  (q:qbit{mem q qs})
    : frame_preserving_upd qstar_heap_pcm
                           ({frac=Some perm; qs=qs; state=qstate_init})
-                          ({frac=Some perm; qs=qs; state=(QState.applyH #qs q qstate_init)})
+                          ({frac=Some perm; qs=qs; state=(QVec.applyH #qs q qstate_init)})
    = fun v ->
       assert (
           qstar_heap_pcm.refine v /\
           PCM.compatible qstar_heap_pcm ({frac=Some perm; qs=qs; state=qstate_init}) v
       );
+      
       // (1) v.state = qstate_init `tensor` rest
       let init_knowledge = {frac=Some perm; qs=qs; state=qstate_init} in
       let vst : qvec v.qs = v.state in
@@ -135,17 +163,18 @@ let applyH_fpupd (#qs:qbits)
                 PCM.op qstar_heap_pcm frame init_knowledge == v /\
                 frame.state `tensor` qstate_init == v.state);
 
-      applyH q : qvec qs -> qvec qs
-      lift qs
-           (qs':_{qs' `disjoint` qs})
-           (op: qvec qs -> qvec qs) : qvec (qs `union` qs') -> qvec (qs `union` qs')
-
-    { i = (v:qvec qs) `tensor` (v':qvec qs') }
-      lift qs qs' op i
-    { i = (op v:qvec qs) `tensor` (v':qvec qs') }
-
-      admit()
       // (2) vnew = {v with state (applyH q qstate_init) `tensor` rest }
+      let final_knowledge = {frac=Some perm; qs=qs; state=(QVec.applyH q qstate_init)} in
+      let newst : qvec v.qs = lift' qs v.qs (QVec.applyH q) vst in
+      let vnew = {frac=v.frac; qs=v.qs; state=newst} in
+      assert (exists (frame: qstate).
+                PCM.composable qstar_heap_pcm final_knowledge frame /\
+                frame.qs `union` qs == vnew.qs /\
+                frame.state `tensor` qstate_init == vst /\
+                lift qs frame.qs (QVec.applyH q) (qstate_init `tensor` frame.state) == (QVec.applyH q) qstate_init `tensor` frame.state);
+                
+
+
       // (3) prove that vnew
       //     - is a "full" value
       //     - it's compatible with ({frac=Some perm; qs=qs; state=(QState.applyH #qs q qstate_init)})
@@ -155,43 +184,43 @@ let applyH_fpupd (#qs:qbits)
       admit()
 
 
-         } )
+module Ref = Steel.PCMReference
+open Steel.ST.Util
 
+module Mem = Steel.Memory
+
+let qstar_heap_ref = Mem.ref qstate qstar_heap_pcm
 
 val applyH_raw (#qs:qbits)
                (#perm:_)
                (#qstate_init:qvec qs)
-               (q:qbit{mem q qs})
-               (qref: Ref.ref qstar_heap_pcm)
+               (q:qbit{FStar.OrdSet.mem q qs})
+               (qref: ref)
   : ST unit
-    (Ref.pts_to qref
+    (Ref.pts_to qref // why the type error?
         ({frac=Some perm; qs=qs; state=qstate_init}))
     (fun _ ->
        Ref.pts_to qref
         ({frac=Some perm;
           qs=qs;
-          state=(QState.applyH #qs q qstate_init)})
-
+          state=(QVec.applyH #qs q qstate_init)}))
 
 let pts_to (qs:qbits) (qv:qvec qs)
   : vprop
   = exists_ (fun p ->
-    Ref.pts_to qstar_heap_ref
+    Ref.pts_to qref // should qref be an argument?
              ({frac = Some p;
                qs = qs;
-               state = qv})
+               state = qv}))
 
 let applyH (#qs:qbits)
            (#perm:_)
            (#qstate_init:qvec qs)
-           (q:qbit{mem q qs})
+           (q:qbit{FStar.OrdSet.mem q qs})
   : ST unit
     (qs `pts_to` qstate_init)
     (fun _ ->
-      qs `pts_to` (QState.applyH q qstate_init))
-   =
+      qs `pts_to` (QVec.applyH q qstate_init))
+   = admit()
 
-module Ref = Steel.ST.PCMReference
 
-val qstar_heap_ref
-  : Ref.ref qstar_heap_pcm

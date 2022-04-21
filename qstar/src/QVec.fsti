@@ -1,4 +1,4 @@
-module QState
+module QVec
 
 open Complex
 open Matrix
@@ -87,24 +87,9 @@ val applyH : (#qs:qbits) -> (q:qbit{mem q qs}) -> qvec qs -> qvec qs
 val applyCX : (#qs:qbits) -> (q1:qbit{mem q1 qs}) -> 
               (q2:qbit{mem q2 qs /\ q1 <> q2}) -> qvec qs -> qvec qs
 
-// The pts_to predicate says that a set of qubits is in a particular vector state v
-
-(* From Nik:
-
-When implementing a frame-preserving update for an action (e.g., like applying a gate to some qs), we get to assume that whatever precondition P that the caller provides is compatible with the current full heap H0. And we have to update the full heap to H1, returning the postcondition Q, and proving that whatever other frame F was composable with P and compatible with H0, is now also composable with Q and compatible with H1.
-*)
-
-(* From FStar.PCM:
-
-type frame_preserving_upd (#a:Type u#a) (p:pcm a) (x y:a) =
-  v:a{
-    p.refine v /\
-    compatible p x v
-  } ->
-  v_new:a{
-    p.refine v_new /\
-    compatible p y v_new /\
-    (forall (frame:a{composable p x frame}).{:pattern composable p x frame}
-       composable p y frame /\
-       (op p x frame == v ==> op p y frame == v_new))}
+(*
+val lemma_applyH_fp
+    { i = (v:qvec qs) `tensor` (v':qvec qs') }
+      lift qs qs' op i
+    { i = (op v:qvec qs) `tensor` (v':qvec qs') }
 *)
