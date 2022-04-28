@@ -10,7 +10,7 @@ let core_ref = P.ref _ qstar_heap_pcm
 assume
 val qstar_state : core_ref
 
-let pts_to (qs:qbits) (state:qvec qs) =
+let pts_to (qs:qbits) (state:qvec qs) : vprop =
   exists_ (fun perm -> P.pts_to qstar_state ({frac=Some perm; qs; state}))
 
 let apply_gate (qs:qbits) (#state:qvec qs) (gate:qvec qs -> qvec qs)
@@ -28,3 +28,21 @@ let share (#o:_) (qs:qbits) (qs':qbits{ disjoint_qbits qs qs'}) (#state:qvec qs)
             (state `tensor` state'))
     (fun _ -> pts_to qs state `star` pts_to qs' state')
   = admit_()
+
+let single (q:qbit) : qbits = OrdSet.singleton q
+let singleton q (b:bool) : qvec (single q) = admit()
+
+val project (q:qbit)
+            (qs:qbits {q `OrdSet.mem` qs })
+            (b:bool)
+            (s:qvec qs)
+  : option (qvec (qs `OrdSet.minus` single q))
+
+
+val measure (q:qbit)
+            (qs:qbits { q `OrdSet.mem` qs })
+            (state:qvec qs)
+  : STT bool
+    (pts_to qs state)
+    (fun b -> pts_to (single q) (singleton q b) `star`
+           pts_to (qs `OrdSet.minus` (single q)) (disc q qs b state))
