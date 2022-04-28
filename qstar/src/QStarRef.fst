@@ -32,17 +32,24 @@ let share (#o:_) (qs:qbits) (qs':qbits{ disjoint_qbits qs qs'}) (#state:qvec qs)
 let single (q:qbit) : qbits = OrdSet.singleton q
 let singleton q (b:bool) : qvec (single q) = admit()
 
+assume
 val project (q:qbit)
             (qs:qbits {q `OrdSet.mem` qs })
             (b:bool)
             (s:qvec qs)
   : option (qvec (qs `OrdSet.minus` single q))
 
+let disc (q:qbit)
+         (qs:qbits {q `OrdSet.mem` qs })
+         (b:bool)
+         (s:qvec qs { Some? (project q qs b s) })
+  : qvec (qs `OrdSet.minus` single q)
+  = Some?.v (project q qs b s)
 
 val measure (q:qbit)
             (qs:qbits { q `OrdSet.mem` qs })
             (state:qvec qs)
-  : STT bool
+  : STT (b:bool { Some? (project q qs b state) })
     (pts_to qs state)
     (fun b -> pts_to (single q) (singleton q b) `star`
            pts_to (qs `OrdSet.minus` (single q)) (disc q qs b state))
