@@ -137,13 +137,11 @@ let lift' (qs:qbits) (qs':qbits{qs `subset` qs'}) (op:qvec qs -> qvec qs) (v:qve
 let lift_preserves_frame (qs:qbits) (qs':qbits{qs' `disjoint` qs}) (op:qvec qs -> qvec qs) 
                          (v : qvec qs) (v' : qvec qs')
   : Lemma (ensures (lift qs qs' op (v `tensor` v') == op v `tensor` v'))
-          [SMTPat (lift qs qs' op (v `tensor` v'))]
   = admit()
 
 let apply_fpupd (#qs:qbits)
                 (#perm:_)
                 (#qstate_init:_)
-                (q:qbit{mem q qs})
                 (gate:qvec qs -> qvec qs)
    : frame_preserving_upd qstar_heap_pcm
                           ({frac=Some perm; qs=qs; state=qstate_init})
