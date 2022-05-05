@@ -1,7 +1,9 @@
 module QStarRef
 open Steel.ST.Util
+open QStar.Steel.Util
 open QVec
 open QStarHeap
+module M = Matrix
 module P = Steel.ST.GhostPCMReference
 
 let core_ref = P.ref _ qstar_heap_pcm
@@ -9,11 +11,13 @@ let core_ref = P.ref _ qstar_heap_pcm
 //All the qubits are stores in this ref cell
 assume
 val qstar_state : core_ref
+
 let pperm = p:perm {p `lesser_equal_perm` full_perm}
+
 let pts_to (qs:qbits) ([@@@smt_fallback]state:qvec qs) : vprop =
   exists_ (fun (perm:pperm) -> P.pts_to qstar_state ({frac=Some perm; qs; state}))
 
-let apply_gate (qs:qbits) (#state:qvec qs) (gate:qvec qs -> qvec qs)
+let apply_gate (#qs:qbits) (#state:qvec qs) (gate:qvec qs -> qvec qs)
   : STT unit
     (pts_to qs state)
     (fun _ -> pts_to qs (gate state))
@@ -50,8 +54,8 @@ let share (#o:_) (qs:qbits) (qs':qbits{ disjoint_qbits qs qs'}) (#state:qvec qs)
     intro_pts_to qs' ()
 
 
-let gather (#o:_) (qs:qbits) (qs':qbits{ disjoint_qbits qs qs'}) (#state:qvec qs) (#state':qvec qs')
-  : STGhostT unit o
+let gather (#o:_) (qs:qbits) (qs':qbits) (#state:qvec qs) (#state':qvec qs')
+  : STGhostT (_:unit{ disjoint_qbits qs qs'}) o
     (pts_to qs state `star` pts_to qs' state')
     (fun _ -> pts_to (qs `OrdSet.union` qs') (state `tensor` state'))
   = let perm = elim_exists #pperm #_ #(fun pperm -> P.pts_to qstar_state ({frac = Some pperm; qs; state})) () in
@@ -63,27 +67,35 @@ let gather (#o:_) (qs:qbits) (qs':qbits{ disjoint_qbits qs qs'}) (#state:qvec qs
     intro_pts_to _ ()
 
 
-let single (q:qbit) : qbits = OrdSet.singleton q
-let singleton q (b:bool) : qvec (single q) = admit()
-
-assume
-val project (q:qbit)
+let project (q:qbit)
             (qs:qbits {q `OrdSet.mem` qs })
             (b:bool)
             (s:qvec qs)
   : option (qvec (qs `OrdSet.minus` single q))
+  = admit ()
 
-let disc (q:qbit)
-         (qs:qbits {q `OrdSet.mem` qs })
-         (b:bool)
-         (s:qvec qs { Some? (project q qs b s) })
-  : qvec (qs `OrdSet.minus` single q)
-  = Some?.v (project q qs b s)
 
-val measure (q:qbit)
+[@@warn_on_use "uses an axiom"]
+noextract
+assume //benign; this is defining admit__
+val admit__ (#a:Type)
+            (#p:pre_t)
+            (#q:a -> vprop)
+            (_:unit)
+  : STF a p q True (fun _ -> False)
+
+let measure (q:qbit)
             (qs:qbits { q `OrdSet.mem` qs })
             (state:qvec qs)
   : STT (b:bool { Some? (project q qs b state) })
     (pts_to qs state)
     (fun b -> pts_to (single q) (singleton q b) `star`
            pts_to (qs `OrdSet.minus` (single q)) (disc q qs b state))
+  = admit__()
+
+let alloc ()
+  = admit__ ()
+  
+let discard (q:qbit) (qstate:qvec (single q))
+  : STT unit (pts_to (single q) qstate) (fun _ -> emp)
+  = admit__()
