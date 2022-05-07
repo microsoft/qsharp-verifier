@@ -1,8 +1,9 @@
 module QVec
 
 open Complex
+open Quantum
 open Matrix
-open FStar.Seq
+open FStar.Real
 open FStar.OrdSet
 
 (* This module defines our representation of quantum states, operations 
@@ -70,26 +71,68 @@ val tensor_assoc_r (#qs0:_)
    : Lemma (union_ac ();
             tensor (tensor v0 v1) v2 == tensor v0 (tensor v1 v2))
 
-// operations:
-// * init
-// * disc
-// * apply
-// * meas
+let single (q:qbit) : qbits = OrdSet.singleton q
 
-val init : (#qs:qbits) -> qvec qs -> (q:qbit) & qvec (union qs (singleton q))
+let singleton q (b:bool) : qvec (single q) = ket b
 
-val disc : (#qs:qbits) -> (q:qbit{mem q qs}) -> qvec qs -> qvec (remove q qs) 
+let double (q1:qbit) (q2:qbit{q1 <> q2}) : qbits = OrdSet.union (single q1) (single q2)
 
-val meas : (#qs:qbits) -> (q:qbit{mem q qs}) -> bool -> qvec qs -> qvec qs
+val proj (#qs:qbits)
+         (q:qbit{q `OrdSet.mem` qs})
+         (b:bool)
+         (s:qvec qs)
+  : option (qvec (qs `OrdSet.minus` single q))
 
-val applyH : (#qs:qbits) -> (q:qbit{mem q qs}) -> qvec qs -> qvec qs
+val disc (#qs:qbits)
+         (q:qbit{q `OrdSet.mem` qs})
+         (b:bool)
+         (s:qvec qs { Some? (proj q b s) })
+  : qvec (qs `OrdSet.minus` single q)
 
-val applyCX : (#qs:qbits) -> (q1:qbit{mem q1 qs}) -> 
-              (q2:qbit{mem q2 qs /\ q1 <> q2}) -> qvec qs -> qvec qs
+val gate (qs:qbits) : Type0
 
-(*
-val lemma_applyH_fp
-    { i = (v:qvec qs) `tensor` (v':qvec qs') }
-      lift qs qs' op i
-    { i = (op v:qvec qs) `tensor` (v':qvec qs') }
-*)
+val hadamard : (q:qbit) -> gate (single q)
+
+val pauli_x : (q:qbit) -> gate (single q)
+
+val pauli_z : (q:qbit) -> gate (single q)
+
+val cnot : (q1:qbit) -> (q2:qbit{q1 <> q2}) -> gate (double q1 q2)
+
+val apply : (#qs:qbits) -> gate qs -> qvec qs -> qvec qs
+
+val lift : (qs:qbits) -> (qs':qbits{qs' `disjoint` qs}) -> 
+           gate qs -> gate (qs `union` qs')
+
+val lift_preserves_frame (qs:qbits) (qs':qbits{qs' `disjoint` qs}) (g:gate qs) 
+                         (v : qvec qs) (v' : qvec qs')
+  : Lemma (ensures (apply (lift qs qs' g) (v `tensor` v') == apply g v `tensor` v'))
+
+let self_adjoint (#qs:qbits) (g: gate qs) =
+  forall (s:qvec qs). apply g (apply g s) == s
+
+val hadamard_self_adjoint (q:qbit)
+  : Lemma (ensures self_adjoint (hadamard q))
+
+val pauli_x_self_adjoint (q:qbit)
+  : Lemma (ensures self_adjoint (pauli_x q))
+
+val pauli_z_self_adjoint (q:qbit)
+  : Lemma (ensures self_adjoint (pauli_z q))
+
+val cnot_self_adjoint (q1:qbit) (q2:qbit{q1 <> q2})
+  : Lemma (ensures self_adjoint (cnot q1 q2))
+
+module F = FStar.FunctionalExtensionality
+
+// TODO: how can I get this to typecheck?
+// let bell00 (q1:qbit) (q2:qbit{q1 <> q2}) : qvec (double q1 q2)
+//   = F.on (knat 4 & knat 1) 
+//          (fun (i,j) -> cmul (of_real (1.0R /. sqrt_2)) (if i = j then c1 else c0))
+let bell00 (q1:qbit) (q2:qbit{q1 <> q2}) : qvec (double q1 q2) = admit()
+
+val lemma_bell00 (q1:qbit) (q2:qbit{q1 <> q2}) 
+  : Lemma (apply (cnot q1 q2) 
+                 ((apply (hadamard q1) (singleton q1 false)) `tensor` 
+                    (singleton q2 false))
+           == bell00 q1 q2)

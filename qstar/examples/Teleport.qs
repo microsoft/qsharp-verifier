@@ -22,9 +22,9 @@ namespace QStar.Translator.Teleport {
         if b2 { X(qBob); }
     }
 
-    operation Teleport (qAlice : Qubit, qBob : Qubit)
+    operation Teleport (qMsg : Qubit, qBob : Qubit)
     : Unit {
-        use qMsg = Qubit();
+        use qAlice = Qubit();
         Entangle(qAlice, qBob);
         let classicalBits = SendMsg(qAlice, qMsg);
         DecodeMsg(qBob, classicalBits);

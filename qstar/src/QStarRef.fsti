@@ -8,12 +8,12 @@ module M = Matrix
 
 val pts_to (qs:qbits) ([@@@smt_fallback]state:qvec qs) : vprop
 
-val apply_gate (#qs:qbits) (#state:qvec qs) (gate:qvec qs -> qvec qs)
+val apply_gate (#qs:qbits) (#state:qvec qs) (g:gate qs)
   : STT unit
     (pts_to qs state)
-    (fun _ -> pts_to qs (gate state))
+    (fun _ -> pts_to qs (apply g state))
 
-val share (#o:_) (qs:qbits) (qs':qbits{ disjoint_qbits qs qs'}) (#state:qvec qs) (#state':qvec qs')
+val share (#o:_) (qs:qbits) (qs':qbits{ disjoint_qbits qs qs' }) (#state:qvec qs) (#state':qvec qs')
   : STGhostT unit o
     (pts_to (qs `OrdSet.union` qs')
             (state `tensor` state'))
@@ -24,30 +24,13 @@ val gather (#o:_) (qs:qbits) (qs':qbits) (#state:qvec qs) (#state':qvec qs')
     (pts_to qs state `star` pts_to qs' state')
     (fun _ -> pts_to (qs `OrdSet.union` qs') (state `tensor` state'))
 
-
-let single (q:qbit) : qbits = OrdSet.singleton q
-let singleton q (b:bool) : qvec (single q) = M.create 2 1 (if b then Complex.c0 else Complex.c1)
-
-val project (q:qbit)
-            (qs:qbits {q `OrdSet.mem` qs })
-            (b:bool)
-            (s:qvec qs)
-  : option (qvec (qs `OrdSet.minus` single q))
-
-let disc (q:qbit)
-         (qs:qbits {q `OrdSet.mem` qs })
-         (b:bool)
-         (s:qvec qs { Some? (project q qs b s) })
-  : qvec (qs `OrdSet.minus` single q)
-  = Some?.v (project q qs b s)
-
-val measure (q:qbit)
-            (qs:qbits { q `OrdSet.mem` qs })
+val measure (#qs:qbits)
+            (q:qbit{ q `OrdSet.mem` qs })
             (state:qvec qs)
-  : STT (b:bool { Some? (project q qs b state) })
+  : STT (b:bool { Some? (proj q b state) })
     (pts_to qs state)
     (fun b -> pts_to (single q) (singleton q b) `star`
-           pts_to (qs `OrdSet.minus` (single q)) (disc q qs b state))
+           pts_to (qs `OrdSet.minus` (single q)) (disc q b state))
 
 val alloc (_:unit)
   : STT qbit emp (fun q -> pts_to (single q) (singleton q false))
@@ -55,15 +38,6 @@ val alloc (_:unit)
 val discard (q:qbit) (qstate:qvec (single q))
   : STT unit (pts_to (single q) qstate) (fun _ -> emp)
 
-val hadamard (q:qbit) : qvec (single q) -> qvec (single q)
-
-let self_adjoint (#qs:qbits) (gate: qvec qs -> qvec qs) =
-  forall (s:qvec qs). gate (gate s) == s
-
-val hadamard_self_adjoint (q:qbit)
-  : Lemma (ensures self_adjoint (hadamard q))
-          
-  
 let test1 (_:unit)
   : STT unit emp (fun _ -> emp)
   = //allocate a qbit q in |0>
@@ -72,7 +46,7 @@ let test1 (_:unit)
     apply_gate (hadamard q);
     apply_gate (hadamard q);
     //now we know q is in state H (H |0>)
-    assert_ (pts_to (single q) (hadamard q (hadamard q (singleton q false))));
+    assert_ (pts_to (single q) (apply (hadamard q) (apply (hadamard q) (singleton q false))));
     //call the lemma below, and prove that q is actually back to |0>
     hadamard_self_adjoint q;
     rewrite (pts_to (single q) _)
@@ -83,7 +57,7 @@ let test1 (_:unit)
 
 // same as test1, but now with some other qbit around
 let test2 (_:unit)
-  : STT qbit emp (fun q1 -> pts_to (single q1) (hadamard _ (singleton _ false)))
+  : STT qbit emp (fun q1 -> pts_to (single q1) (apply (hadamard _) (singleton _ false)))
   = //allocate a qbit q in |0>
     let q = alloc () in
     let q1 = alloc () in
@@ -91,7 +65,7 @@ let test2 (_:unit)
     apply_gate (hadamard q);
     apply_gate (hadamard q);
     //now we know q is in state H (H |0>)
-    assert_ (pts_to (single q) (hadamard q (hadamard q (singleton q false))));
+    assert_ (pts_to (single q) (apply (hadamard q) (apply (hadamard q) (singleton q false))));
     //call the lemma below, and prove that q is actually back to |0>
     hadamard_self_adjoint q;
     rewrite (pts_to (single q) _)
@@ -101,7 +75,6 @@ let test2 (_:unit)
     discard q _;
     apply_gate (hadamard q1);
     return q1
-
 
 // returning more than one qbit
 let test3 (_:unit)
@@ -146,3 +119,79 @@ let test4 (_:unit)
                    pure (fst res =!= snd res /\
                          state == (singleton (fst res) false `tensor` singleton (snd res) false)));
     return res
+
+
+
+/// NOTE: Content after this point will not type check 
+
+(*
+operation Entangle (qAlice : Qubit, qBob : Qubit) : Unit is Adj {
+    H(qAlice);
+    CNOT(qAlice, qBob);
+} 
+*)
+let entangle (qA:qbit) (qB:qbit{qA <> qB})
+  : STT unit
+        (pts_to (single qA) (singleton _ false) `star` 
+           pts_to (single qB) (singleton _ false))
+        (fun _ -> pts_to (double qA qB) (bell00 qA qB))
+  = // precondition implies (pts_to (single qA) (singleton _ false))
+    apply_gate (hadamard qA);
+    // now (pts_to (single qA) (apply (hadamard qA) (singleton _ false)))
+    
+    // gather qA and qB to apply cnot
+    apply_gate (cnot qA qB)
+    // apply lemma_bell00 from QVec
+
+(*
+operation SendMsg (qAlice : Qubit, qMsg : Qubit)
+: (Bool, Bool) {
+    Adjoint Entangle(qMsg, qAlice);
+    let m1 = M(qMsg);
+    let m2 = M(qAlice);
+    return (m1 == One, m2 == One);
+}
+*)
+let send_msg (qA:qbit) (qM:qbit{qA <> qM})
+  : STT (bool * bool)
+        (emp) // TODO
+        (fun bits -> emp) // TODO
+  = let b1 = measure qM in
+    let b2 = measure qA in
+    return (b1, b2)
+
+(*
+operation DecodeMsg (qBob : Qubit, (b1 : Bool, b2 : Bool))
+: Unit {
+    if b1 { Z(qBob); }
+    if b2 { X(qBob); }
+}
+*)
+let decode_msg (qB:qbit) (bits:bool * bool)
+  : STT unit
+        (emp) // TODO
+        (fun _ -> emp) // TODO
+  = let (b1, b2) = bits in
+    if b1 then apply_gate (pauli_z qB);
+    if b2 then apply_gate (pauli_x qB)
+
+(*
+operation Teleport (qMsg : Qubit, qBob : Qubit)
+: Unit {
+    use qAlice = Qubit();
+    Entangle(qAlice, qBob);
+    let classicalBits = SendMsg(qAlice, qMsg);
+    DecodeMsg(qBob, classicalBits);
+}
+*)
+let teleport (qM:qbit) (qB:qbit)
+  : STT unit
+        (exists_ (fun state -> pts_to (single qM) state `star` 
+                            pts_to (single qB) (singleton _ false)))
+        (fun _ -> (exists_ (fun state -> pts_to (single qB) state)))
+        // @Nik: how can I say that "state" in the precondition is the same as "state" in the postcondition?
+  = let qA = alloc () in
+    entangle qA qB;
+    let bits = send_msg qA qM in
+    decode_msg qB bits;
+    discard qA _
