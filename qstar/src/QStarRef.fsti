@@ -121,9 +121,6 @@ let test4 (_:unit)
     return res
 
 
-
-/// NOTE: Content after this point will not type check 
-
 (*
 operation Entangle (qAlice : Qubit, qBob : Qubit) : Unit is Adj {
     H(qAlice);
@@ -135,12 +132,20 @@ let entangle (qA:qbit) (qB:qbit{qA <> qB})
         (pts_to (single qA) (singleton _ false) `star` 
            pts_to (single qB) (singleton _ false))
         (fun _ -> pts_to (double qA qB) (bell00 qA qB))
-  = // precondition implies (pts_to (single qA) (singleton _ false))
-    apply_gate (hadamard qA);
-    // now (pts_to (single qA) (apply (hadamard qA) (singleton _ false)))
-    
+  = apply_gate (hadamard qA);
+    gather (single qA) (single qB) #_ #_;
+    apply_gate (cnot qA qB);
+    lemma_bell00 qA qB;
+    rewrite (pts_to _ _)
+            (pts_to (double qA qB) (bell00 qA qB))
+
+
+/// NOTE: Content after this point will not type check 
+
+
+
     // gather qA and qB to apply cnot
-    apply_gate (cnot qA qB)
+
     // apply lemma_bell00 from QVec
 
 (*
