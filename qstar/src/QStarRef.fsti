@@ -189,12 +189,13 @@ operation Teleport (qMsg : Qubit, qBob : Qubit)
     DecodeMsg(qBob, classicalBits);
 }
 *)
-let teleport (qM:qbit) (qB:qbit)
+let teleport (#state:_) (qM:qbit) (qB:qbit)
   : STT unit
-        (exists_ (fun state -> pts_to (single qM) state `star` 
-                            pts_to (single qB) (singleton _ false)))
-        (fun _ -> (exists_ (fun state -> pts_to (single qB) state)))
+        (pts_to (single qM) state `star` 
+         pts_to (single qB) (singleton _ false))
+        (fun _ -> pts_to (single qB) state)
         // @Nik: how can I say that "state" in the precondition is the same as "state" in the postcondition?
+        // A: By parameterizing the function with a ghost variable
   = let qA = alloc () in
     entangle qA qB;
     let bits = send_msg qA qM in
