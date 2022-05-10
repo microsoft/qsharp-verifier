@@ -125,11 +125,26 @@ val cnot_self_adjoint (q1:qbit) (q2:qbit{q1 <> q2})
 
 module F = FStar.FunctionalExtensionality
 
-// TODO: how can I get this to typecheck?
-// let bell00 (q1:qbit) (q2:qbit{q1 <> q2}) : qvec (double q1 q2)
-//   = F.on (knat 4 & knat 1) 
-//          (fun (i,j) -> cmul (of_real (1.0R /. sqrt_2)) (if i = j then c1 else c0))
-let bell00 (q1:qbit) (q2:qbit{q1 <> q2}) : qvec (double q1 q2) = admit()
+
+let ordset_size_union  (#a:eqtype) (#f:cmp a) (s0 s1:OrdSet.ordset a f)
+  : Lemma (requires OrdSet.disjoint s0 s1)
+          (ensures OrdSet.size (OrdSet.union s0 s1) == OrdSet.size s0 + OrdSet.size s1)
+          [SMTPat (OrdSet.size (OrdSet.union s0 s1))]
+  = admit() //TODO: need to add this to the OrdSet library
+
+let ordset_size_double (q1:qbit) (q2:qbit{q1 =!= q2})
+  : Lemma (ensures dimension (double q1 q2) == 4)
+          [SMTPat (dimension (double q1 q2))]
+  = assert (OrdSet.intersect (single q1) (single q2) `OrdSet.equal` OrdSet.empty)
+    
+let as_qvec (qs:qbits) (#n:nat{n == dimension qs}) (m:matrix complex n 1) : qvec qs = m
+
+let bell00' (q1:qbit) (q2:qbit{q1 <> q2}) : matrix complex 4 1
+  = F.on (knat 4 & knat 1) 
+         (fun (i,j) -> cmul (of_real (1.0R /. sqrt_2)) (if i = j then c1 else c0))
+  
+let bell00 (q1:qbit) (q2:qbit{q1 <> q2}) : qvec (double q1 q2)
+  = as_qvec _ (bell00' q1 q2)
 
 val lemma_bell00 (q1:qbit) (q2:qbit{q1 <> q2}) 
   : Lemma (apply (cnot q1 q2) 
