@@ -120,7 +120,6 @@ let test4 (_:unit)
                          state == (singleton (fst res) false `tensor` singleton (snd res) false)));
     return res
 
-
 (*
 operation Entangle (qAlice : Qubit, qBob : Qubit) : Unit is Adj {
     H(qAlice);
@@ -139,15 +138,6 @@ let entangle (qA:qbit) (qB:qbit{qA <> qB})
     rewrite (pts_to _ _)
             (pts_to (double qA qB) (bell00 qA qB))
 
-
-/// NOTE: Content after this point will not type check 
-
-
-
-    // gather qA and qB to apply cnot
-
-    // apply lemma_bell00 from QVec
-
 (*
 operation SendMsg (qAlice : Qubit, qMsg : Qubit)
 : (Bool, Bool) {
@@ -157,13 +147,19 @@ operation SendMsg (qAlice : Qubit, qMsg : Qubit)
     return (m1 == One, m2 == One);
 }
 *)
-let send_msg (qA:qbit) (qM:qbit{qA <> qM})
+let send_msg (#qs:_) (qA:qbit) (qM:qbit{qA <> qM}) (#state:_)
   : STT (bool * bool)
-        (emp) // TODO
-        (fun bits -> emp) // TODO
-  = let b1 = measure qM in
-    let b2 = measure qA in
-    return (b1, b2)
+        (pts_to ((double qA qM) `OrdSet.union` qs) state)
+        (fun bits -> let (b1, b2) = bits in
+                  pts_to (single qM) (singleton _ b1) `star`
+                  pts_to (single qA) (singleton _ b2))
+                  //pts_to qs (disc qA b2 (disc qM b1 (apply (cnot qM qA) (apply (hadamard qA) state)))))
+  = //CNOT(qM, qA);
+    //H(qM);
+    //let b1 = measure qM in
+    //let b2 = measure qA in
+    //return (b1, b2)
+    admit__ ()
 
 (*
 operation DecodeMsg (qBob : Qubit, (b1 : Bool, b2 : Bool))
@@ -172,13 +168,24 @@ operation DecodeMsg (qBob : Qubit, (b1 : Bool, b2 : Bool))
     if b2 { X(qBob); }
 }
 *)
-let decode_msg (qB:qbit) (bits:bool * bool)
+let decode_msg (qB:qbit) (#state:_) (bits:bool * bool) // why does state need to come after qB?
   : STT unit
-        (emp) // TODO
-        (fun _ -> emp) // TODO
-  = let (b1, b2) = bits in
-    if b1 then apply_gate (pauli_z qB);
-    if b2 then apply_gate (pauli_x qB)
+        (pts_to (single qB) state)
+        (fun _ -> pts_to (single qB) 
+                 (let (b1, b2) = bits in
+                  if b1
+                  then 
+                    if b2 
+                    then apply (pauli_x _) (apply (pauli_z _) state) 
+                    else apply (pauli_z _) state 
+                  else 
+                    if b2 
+                    then apply (pauli_x _) state 
+                    else state))
+  = //let (b1, b2) = bits in
+    //if b1 then apply_gate (pauli_z qB);
+    //if b2 then apply_gate (pauli_x qB)
+    admit__ ()
 
 (*
 operation Teleport (qMsg : Qubit, qBob : Qubit)
@@ -189,15 +196,14 @@ operation Teleport (qMsg : Qubit, qBob : Qubit)
     DecodeMsg(qBob, classicalBits);
 }
 *)
-let teleport (#state:_) (qM:qbit) (qB:qbit)
+let teleport (qM:qbit) (#state:qvec _) (qB:qbit)
   : STT unit
         (pts_to (single qM) state `star` 
          pts_to (single qB) (singleton _ false))
         (fun _ -> pts_to (single qB) state)
-        // @Nik: how can I say that "state" in the precondition is the same as "state" in the postcondition?
-        // A: By parameterizing the function with a ghost variable
-  = let qA = alloc () in
-    entangle qA qB;
-    let bits = send_msg qA qM in
-    decode_msg qB bits;
-    discard qA _
+  = //let qA = alloc () in
+    //entangle qA qB;
+    //let bits = send_msg qA qM in
+    //decode_msg qB bits;
+    //discard qA _
+    admit__ ()

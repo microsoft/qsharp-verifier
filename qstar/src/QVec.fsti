@@ -123,9 +123,27 @@ val pauli_z_self_adjoint (q:qbit)
 val cnot_self_adjoint (q1:qbit) (q2:qbit{q1 <> q2})
   : Lemma (ensures self_adjoint (cnot q1 q2))
 
-module F = FStar.FunctionalExtensionality
+/// Abstractions for defining vector states
+
+let scale #qs (c:complex) (v:qvec qs) : qvec qs = Matrix.scale c v
+
+let plus #qs (v1:qvec qs) (v2:qvec qs) : qvec qs = matrix_add v1 v2
+
+// TODO: what type do we want for "data"?
+let rec build_vec (qs:qbits) (data:qbit -> bool) 
+  : Tot (qvec qs) (decreases (OrdSet.size qs)) =
+  if OrdSet.size qs = 0
+  then empty_qvec
+  else let q = Some?.v (OrdSet.choose qs) in
+       singleton q (data q) `tensor` build_vec (OrdSet.remove q qs) data
+
+let bell00 (q1:qbit) (q2:qbit{q1 <> q2}) : qvec (double q1 q2) =
+  scale (of_real (1.0R /. sqrt_2)) 
+        ((build_vec _ (fun _ -> false)) `plus` (build_vec _ (fun _ -> true)))
 
 
+// Old definition
+(*
 let ordset_size_union  (#a:eqtype) (#f:cmp a) (s0 s1:OrdSet.ordset a f)
   : Lemma (requires OrdSet.disjoint s0 s1)
           (ensures OrdSet.size (OrdSet.union s0 s1) == OrdSet.size s0 + OrdSet.size s1)
@@ -139,12 +157,16 @@ let ordset_size_double (q1:qbit) (q2:qbit{q1 =!= q2})
     
 let as_qvec (qs:qbits) (#n:nat{n == dimension qs}) (m:matrix complex n 1) : qvec qs = m
 
+module F = FStar.FunctionalExtensionality
+
 let bell00' (q1:qbit) (q2:qbit{q1 <> q2}) : matrix complex 4 1
   = F.on (knat 4 & knat 1) 
          (fun (i,j) -> cmul (of_real (1.0R /. sqrt_2)) (if i = j then c1 else c0))
   
 let bell00 (q1:qbit) (q2:qbit{q1 <> q2}) : qvec (double q1 q2)
   = as_qvec _ (bell00' q1 q2)
+*)
+
 
 val lemma_bell00 (q1:qbit) (q2:qbit{q1 <> q2}) 
   : Lemma (apply (cnot q1 q2) 
