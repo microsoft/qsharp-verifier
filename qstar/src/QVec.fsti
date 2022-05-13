@@ -77,17 +77,24 @@ let singleton q (b:bool) : qvec (single q) = ket b
 
 let double (q1:qbit) (q2:qbit{q1 <> q2}) : qbits = OrdSet.union (single q1) (single q2)
 
+let triple (q1:qbit) (q2:qbit{q1 <> q2}) (q3:qbit{q1 <> q3 /\ q2 <> q3}) : qbits =
+  OrdSet.union (double q1 q2) (single q3)
+
 val proj (#qs:qbits)
          (q:qbit{q `OrdSet.mem` qs})
          (b:bool)
          (s:qvec qs)
-  : option (qvec (qs `OrdSet.minus` single q))
+  : qvec qs
 
 val disc (#qs:qbits)
          (q:qbit{q `OrdSet.mem` qs})
-         (b:bool)
-         (s:qvec qs { Some? (proj q b s) })
+         (s:qvec qs)
   : qvec (qs `OrdSet.minus` single q)
+
+let proj_and_disc #qs q b (s:qvec qs) = disc q (proj q b s)
+
+val relabel_indices : (#qs1:qbits) -> (qs2:qbits{OrdSet.size qs1 = OrdSet.size qs2}) -> 
+                      qvec qs1 -> qvec qs2
 
 val gate (qs:qbits) : Type0
 

@@ -60,17 +60,16 @@ let proj (#qs:qbits)
          (q:qbit{q `OrdSet.mem` qs})
          (b:bool)
          (s:qvec qs)
-  : option (qvec (qs `OrdSet.minus` single q))
+  : qvec qs
   = admit()
-    // project qubit q onto state b and check if the result is the zero vector
 
 let disc (#qs:qbits)
          (q:qbit{q `OrdSet.mem` qs})
-         (b:bool)
-         (s:qvec qs { Some? (proj q b s) })
+         (s:qvec qs)
   : qvec (qs `OrdSet.minus` single q)
   = admit()
-    // call proj and then multiply by <b|
+
+let relabel_indices #qs1 qs2 s = admit()
 
 let gate (qs:qbits) = matrix complex (dimension qs) (dimension qs) 
 

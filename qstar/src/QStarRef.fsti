@@ -27,10 +27,10 @@ val gather (#o:_) (qs:qbits) (qs':qbits) (#state:qvec qs) (#state':qvec qs')
 val measure (#qs:qbits)
             (q:qbit{ q `OrdSet.mem` qs })
             (state:qvec qs)
-  : STT (b:bool { Some? (proj q b state) })
+  : STT bool
     (pts_to qs state)
     (fun b -> pts_to (single q) (singleton q b) `star`
-           pts_to (qs `OrdSet.minus` (single q)) (disc q b state))
+           pts_to (qs `OrdSet.minus` (single q)) (proj_and_disc q b state))
 
 val alloc (_:unit)
   : STT qbit emp (fun q -> pts_to (single q) (singleton q false))
@@ -138,6 +138,15 @@ let entangle (qA:qbit) (qB:qbit{qA <> qB})
     rewrite (pts_to _ _)
             (pts_to (double qA qB) (bell00 qA qB))
 
+let opt_apply #qs (b:bool) (g:gate qs) (s:qvec qs) : qvec qs
+  = if b then apply g s else s
+
+let ordset_size_union  (#a:eqtype) (#f:OrdSet.cmp a) (s0 s1:OrdSet.ordset a f)
+  : Lemma (requires OrdSet.disjoint s0 s1)
+          (ensures OrdSet.size (OrdSet.union s0 s1) == OrdSet.size s0 + OrdSet.size s1)
+          [SMTPat (OrdSet.size (OrdSet.union s0 s1))]
+  = admit() //TODO: need to add this to the OrdSet library
+
 (*
 operation SendMsg (qAlice : Qubit, qMsg : Qubit)
 : (Bool, Bool) {
@@ -147,13 +156,21 @@ operation SendMsg (qAlice : Qubit, qMsg : Qubit)
     return (m1 == One, m2 == One);
 }
 *)
-let send_msg (#qs:_) (qA:qbit) (qM:qbit{qA <> qM}) (#state:_)
+let send_msg (#qs:qbits) 
+             (#qB:qbit) 
+             (qA:qbit{qA <> qB}) 
+             (qM:qbit{qM <> qA /\ qM <> qB /\ OrdSet.disjoint (triple qA qB qM) qs}) 
+             (#state:qvec (single qM `OrdSet.union` qs))
   : STT (bool * bool)
-        (pts_to ((double qA qM) `OrdSet.union` qs) state)
+        (pts_to (single qM `OrdSet.union` qs) state `star`
+         pts_to (double qA qB) (bell00 qA qB))
         (fun bits -> let (b1, b2) = bits in
                   pts_to (single qM) (singleton _ b1) `star`
-                  pts_to (single qA) (singleton _ b2))
-                  //pts_to qs (disc qA b2 (disc qM b1 (apply (cnot qM qA) (apply (hadamard qA) state)))))
+                  pts_to (single qA) (singleton _ b2) `star`
+                  pts_to (single qB `OrdSet.union` qs)
+                         (opt_apply b1 (lift (single qB) qs (pauli_z _)) 
+                           (opt_apply b2 (lift (single qB) qs (pauli_x _)) 
+                             (relabel_indices _ state))))
   = //CNOT(qM, qA);
     //H(qM);
     //let b1 = measure qM in
@@ -168,20 +185,12 @@ operation DecodeMsg (qBob : Qubit, (b1 : Bool, b2 : Bool))
     if b2 { X(qBob); }
 }
 *)
-let decode_msg (qB:qbit) (#state:_) (bits:bool * bool) // why does state need to come after qB?
+let decode_msg (qB:qbit) (#state:_) (bits:bool * bool)
   : STT unit
         (pts_to (single qB) state)
         (fun _ -> pts_to (single qB) 
                  (let (b1, b2) = bits in
-                  if b1
-                  then 
-                    if b2 
-                    then apply (pauli_x _) (apply (pauli_z _) state) 
-                    else apply (pauli_z _) state 
-                  else 
-                    if b2 
-                    then apply (pauli_x _) state 
-                    else state))
+                  opt_apply b2 (pauli_x _) (opt_apply b1 (pauli_z _) state)))
   = //let (b1, b2) = bits in
     //if b1 then apply_gate (pauli_z qB);
     //if b2 then apply_gate (pauli_x qB)
@@ -196,14 +205,24 @@ operation Teleport (qMsg : Qubit, qBob : Qubit)
     DecodeMsg(qBob, classicalBits);
 }
 *)
-let teleport (qM:qbit) (#state:qvec _) (qB:qbit)
+let teleport (#qs:qbits) 
+             (qM:qbit{OrdSet.disjoint (single qM) qs}) 
+             (#state:qvec (OrdSet.union (single qM) qs)) 
+             (qB:qbit{qB <> qM /\ OrdSet.disjoint (single qB) qs})
   : STT unit
-        (pts_to (single qM) state `star` 
+        (pts_to (OrdSet.union (single qM) qs) state `star` 
          pts_to (single qB) (singleton _ false))
-        (fun _ -> pts_to (single qB) state)
+        (fun _ -> pts_to (OrdSet.union (single qB) qs) 
+                      (relabel_indices _ state))
   = //let qA = alloc () in
     //entangle qA qB;
+
+    // gather qA, qB, and qM+qs
+
     //let bits = send_msg qA qM in
     //decode_msg qB bits;
+
+    // destruct "bits" and use the facts that pauli_x and pauli_z are self-adjoint
+
     //discard qA _
     admit__ ()
