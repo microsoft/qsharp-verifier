@@ -13,25 +13,31 @@ val apply_gate (#qs:qbits) (#state:qvec qs) (g:gate qs)
     (pts_to qs state)
     (fun _ -> pts_to qs (apply g state))
 
-val share (#o:_) (qs:qbits) (qs':qbits{ disjoint_qbits qs qs' }) (#state:qvec qs) (#state':qvec qs')
-  : STGhostT unit o
-    (pts_to (qs `OrdSet.union` qs')
+val share (#o:_) (qs:qbits) (qs':qbits) (#state:qvec qs) (#state':qvec qs')
+  : STGhost unit o
+    (pts_to (qs `union` qs')
             (state `tensor` state'))
     (fun _ -> pts_to qs state `star` pts_to qs' state')
+    (requires disjoint qs qs')
+    (ensures fun _ -> True)
 
 val gather (#o:_) (qs:qbits) (qs':qbits) (#state:qvec qs) (#state':qvec qs')
-  : STGhostT (_:unit{disjoint_qbits qs qs'}) o
+  : STGhost unit o
     (pts_to qs state `star` pts_to qs' state')
-    (fun _ -> pts_to (qs `OrdSet.union` qs') (state `tensor` state'))
+    (fun _ -> pts_to (qs `union` qs') (state `tensor` state'))
+    (requires True)
+    (ensures fun _ -> disjoint qs qs')
 
 val measure (#qs:qbits)
-            (q:qbit{ q `OrdSet.mem` qs })
-            (state:qvec qs)
-  : STT bool
+            (#state:qvec qs)
+            (q:qbit)
+  : ST bool
     (pts_to qs state)
     (fun b -> pts_to (single q) (singleton q b) `star`
-           pts_to (qs `OrdSet.minus` (single q)) (proj_and_disc q b state))
-
+           pts_to (qs `minus` (single q)) (proj_and_disc q b state))
+    (requires q `mem` qs)
+    (ensures fun _ -> True)
+    
 val alloc (_:unit)
   : STT qbit emp (fun q -> pts_to (single q) (singleton q false))
 
@@ -98,7 +104,7 @@ let test4 (_:unit)
   : STT (qbit * qbit)
         emp
         (fun qs -> exists_ (fun state -> 
-                   pts_to (OrdSet.union (single (fst qs)) (single (snd qs))) state `star`
+                   pts_to (union (single (fst qs)) (single (snd qs))) state `star`
                    pure (fst qs =!= snd qs /\
                          state == (singleton (fst qs) false `tensor` singleton (snd qs) false))))
   = //allocate a qbit q in |0>
@@ -107,7 +113,7 @@ let test4 (_:unit)
     let _ = gather (single q0) (single q1) #_ #_ in
     let res = (q0, q1) in
     rewrite (pts_to _ _)
-            (pts_to (OrdSet.union (single (fst res)) (single (snd res)))
+            (pts_to (union (single (fst res)) (single (snd res)))
                     (singleton (fst res) false `tensor` singleton (snd res) false));
     (* This is super verbose, but once F* PR  2553 is merged, this should be automated *)
     intro_pure (fst res =!= snd res /\
@@ -115,114 +121,56 @@ let test4 (_:unit)
                 (singleton (fst res) false `tensor` singleton (snd res) false)));
     intro_exists (singleton (fst res) false `tensor` singleton (snd res) false)
                  (fun state -> 
-                   pts_to (OrdSet.union (single (fst res)) (single (snd res))) state `star`
+                   pts_to (union (single (fst res)) (single (snd res))) state `star`
                    pure (fst res =!= snd res /\
                          state == (singleton (fst res) false `tensor` singleton (snd res) false)));
     return res
 
-(*
-operation Entangle (qAlice : Qubit, qBob : Qubit) : Unit is Adj {
-    H(qAlice);
-    CNOT(qAlice, qBob);
-} 
-*)
-let entangle (qA:qbit) (qB:qbit{qA <> qB})
-  : STT unit
-        (pts_to (single qA) (singleton _ false) `star` 
-           pts_to (single qB) (singleton _ false))
-        (fun _ -> pts_to (double qA qB) (bell00 qA qB))
-  = apply_gate (hadamard qA);
-    gather (single qA) (single qB) #_ #_;
-    apply_gate (cnot qA qB);
-    lemma_bell00 qA qB;
-    rewrite (pts_to _ _)
-            (pts_to (double qA qB) (bell00 qA qB))
+let coerce_qvec (#qs:qbits) (#qs':qbits { equal qs qs' }) (qv:qvec qs)
+  : qvec qs'
+  = qv
 
-let opt_apply #qs (b:bool) (g:gate qs) (s:qvec qs) : qvec qs
-  = if b then apply g s else s
+let rewrite_pts_to_equiv #o (#qs:qbits) 
+                         (#s:qvec qs)
+                         (qs':qbits { equal qs qs' })
+  : STGhostT unit o         
+    (pts_to qs s)
+    (fun _ -> pts_to qs' (coerce_qvec s))
+  = rewrite _ _
 
-let ordset_size_union  (#a:eqtype) (#f:OrdSet.cmp a) (s0 s1:OrdSet.ordset a f)
-  : Lemma (requires OrdSet.disjoint s0 s1)
-          (ensures OrdSet.size (OrdSet.union s0 s1) == OrdSet.size s0 + OrdSet.size s1)
-          [SMTPat (OrdSet.size (OrdSet.union s0 s1))]
-  = admit() //TODO: need to add this to the OrdSet library
+let measure1 (qA:qbit) (qB:qbit { qA <> qB }) (s:qvec (double qA qB))
+  : STT bool
+    (pts_to (double qA qB) s)
+    (fun b -> pts_to (single qA) (singleton _ b) `star`
+           pts_to (single qB) (coerce_qvec (proj_and_disc qA b s)))
+  = let b = measure qA in
+    rewrite_pts_to_equiv #_ #(minus _ _) (single qB);
+    return b
 
-(*
-operation SendMsg (qAlice : Qubit, qMsg : Qubit)
-: (Bool, Bool) {
-    Adjoint Entangle(qMsg, qAlice);
-    let m1 = M(qMsg);
-    let m2 = M(qAlice);
-    return (m1 == One, m2 == One);
-}
-*)
-let send_msg (#qs:qbits) 
-             (#qB:qbit) 
-             (qA:qbit{qA <> qB}) 
-             (qM:qbit{qM <> qA /\ qM <> qB /\ OrdSet.disjoint (triple qA qB qM) qs}) 
-             (#state:qvec (single qM `OrdSet.union` qs))
-  : STT (bool * bool)
-        (pts_to (single qM `OrdSet.union` qs) state `star`
-         pts_to (double qA qB) (bell00 qA qB))
-        (fun bits -> let (b1, b2) = bits in
-                  pts_to (single qM) (singleton _ b1) `star`
-                  pts_to (single qA) (singleton _ b2) `star`
-                  pts_to (single qB `OrdSet.union` qs)
-                         (opt_apply b1 (lift (single qB) qs (pauli_z _)) 
-                           (opt_apply b2 (lift (single qB) qs (pauli_x _)) 
-                             (relabel_indices _ state))))
-  = //CNOT(qM, qA);
-    //H(qM);
-    //let b1 = measure qM in
-    //let b2 = measure qA in
-    //return (b1, b2)
-    admit__ ()
+let fst (x:('a & 'b)) = fst x
+let snd (x:('a & 'b)) = snd x
 
-(*
-operation DecodeMsg (qBob : Qubit, (b1 : Bool, b2 : Bool))
-: Unit {
-    if b1 { Z(qBob); }
-    if b2 { X(qBob); }
-}
-*)
-let decode_msg (qB:qbit) (#state:_) (bits:bool * bool)
-  : STT unit
-        (pts_to (single qB) state)
-        (fun _ -> pts_to (single qB) 
-                 (let (b1, b2) = bits in
-                  opt_apply b2 (pauli_x _) (opt_apply b1 (pauli_z _) state)))
-  = //let (b1, b2) = bits in
-    //if b1 then apply_gate (pauli_z qB);
-    //if b2 then apply_gate (pauli_x qB)
-    admit__ ()
+let measure2 (qA:qbit) (qB:qbit) (rest:qbits { qA <> qB /\ disjoint (double qA qB) rest })
+             (s:qvec (union (double qA qB) rest))
+  : STT (bool & bool)
+    (pts_to _ s)
+    (fun b12 -> pts_to (single qA) (singleton _ (fst b12)) `star`
+             pts_to (single qB) (singleton _ (snd b12)) `star`
+             pts_to rest (coerce_qvec 
+                                (proj_and_disc qB (snd b12)
+                                  (proj_and_disc qA (fst b12) s))))
+  = let b1 = measure qA in
+    let b2 = measure #(minus _ _) qB in
+    rewrite_pts_to_equiv #_ #(minus _ _) rest;
+    let res = b1, b2 in
+    rewrite (pts_to (single qA) _)
+            (pts_to (single qA) (singleton _ (fst res)));
+    rewrite (pts_to (single qB) _)
+            (pts_to (single qB) (singleton _ (snd res)));
+    rewrite (pts_to rest _)
+            (pts_to rest
+                    (coerce_qvec 
+                      (proj_and_disc qB (snd res)
+                        (proj_and_disc qA (fst res) s))));
+    return res
 
-(*
-operation Teleport (qMsg : Qubit, qBob : Qubit)
-: Unit {
-    use qAlice = Qubit();
-    Entangle(qAlice, qBob);
-    let classicalBits = SendMsg(qAlice, qMsg);
-    DecodeMsg(qBob, classicalBits);
-}
-*)
-let teleport (#qs:qbits) 
-             (qM:qbit{OrdSet.disjoint (single qM) qs}) 
-             (#state:qvec (OrdSet.union (single qM) qs)) 
-             (qB:qbit{qB <> qM /\ OrdSet.disjoint (single qB) qs})
-  : STT unit
-        (pts_to (OrdSet.union (single qM) qs) state `star` 
-         pts_to (single qB) (singleton _ false))
-        (fun _ -> pts_to (OrdSet.union (single qB) qs) 
-                      (relabel_indices _ state))
-  = //let qA = alloc () in
-    //entangle qA qB;
-
-    // gather qA, qB, and qM+qs
-
-    //let bits = send_msg qA qM in
-    //decode_msg qB bits;
-
-    // destruct "bits" and use the facts that pauli_x and pauli_z are self-adjoint
-
-    //discard qA _
-    admit__ ()

@@ -37,11 +37,13 @@ let intro_pts_to #o (#p:pperm) qs #s ()
   = intro_exists #pperm p (fun p -> P.pts_to qstar_state ({frac = Some p; qs; state=s}));
     ()
 
-let share (#o:_) (qs:qbits) (qs':qbits{ disjoint_qbits qs qs'}) (#state:qvec qs) (#state':qvec qs')
-  : STGhostT unit o
-    (pts_to (qs `OrdSet.union` qs')
+let share (#o:_) (qs:qbits) (qs':qbits) (#state:qvec qs) (#state':qvec qs')
+  : STGhost unit o
+    (pts_to (qs `union` qs')
             (state `tensor` state'))
     (fun _ -> pts_to qs state `star` pts_to qs' state')
+    (requires disjoint qs qs')
+    (ensures fun _ -> True)
   = let perm = elim_exists #pperm () in
     P.share qstar_state _
       ({ frac = Some (Ghost.reveal (half_perm perm));
@@ -54,33 +56,29 @@ let share (#o:_) (qs:qbits) (qs':qbits{ disjoint_qbits qs qs'}) (#state:qvec qs)
     intro_pts_to qs' ()
 
 let gather (#o:_) (qs:qbits) (qs':qbits) (#state:qvec qs) (#state':qvec qs')
-  : STGhostT (_:unit{ disjoint_qbits qs qs'}) o
+  : STGhost unit o
     (pts_to qs state `star` pts_to qs' state')
-    (fun _ -> pts_to (qs `OrdSet.union` qs') (state `tensor` state'))
+    (fun _ -> pts_to (qs `union` qs') (state `tensor` state'))
+    (requires True)
+    (ensures fun _ -> disjoint qs qs')
   = let perm = elim_exists #pperm #_ #(fun pperm -> P.pts_to qstar_state ({frac = Some pperm; qs; state})) () in
     let perm' = elim_exists #pperm #_ #(fun pperm -> P.pts_to qstar_state ({frac = Some pperm; qs=qs'; state=state'})) () in
     P.gather qstar_state ({frac = Some (Ghost.reveal perm); qs; state})
                          ({frac = Some (Ghost.reveal perm'); qs=qs'; state=state'});
     rewrite (P.pts_to qstar_state _)
-            (P.pts_to qstar_state ({frac=Some (sum_perm perm perm'); qs=(qs `OrdSet.union` qs'); state=(state `tensor` state')}));
+            (P.pts_to qstar_state ({frac=Some (sum_perm perm perm'); qs=(qs `union` qs'); state=(state `tensor` state')}));
     intro_pts_to _ ()
 
-[@@warn_on_use "uses an axiom"]
-noextract
-assume //benign; this is defining admit__
-val admit__ (#a:Type)
-            (#p:pre_t)
-            (#q:a -> vprop)
-            (_:unit)
-  : STF a p q True (fun _ -> False)
 
 let measure (#qs:qbits)
-            (q:qbit{ q `OrdSet.mem` qs })
-            (state:qvec qs)
-  : STT bool
+            (#state:qvec qs)
+            (q:qbit)
+  : ST bool
     (pts_to qs state)
     (fun b -> pts_to (single q) (singleton q b) `star`
-           pts_to (qs `OrdSet.minus` (single q)) (proj_and_disc q b state))
+           pts_to (qs `minus` (single q)) (proj_and_disc q b state))
+    (requires q `mem` qs)
+    (ensures fun _ -> True)
   = admit__()
 
 let alloc ()

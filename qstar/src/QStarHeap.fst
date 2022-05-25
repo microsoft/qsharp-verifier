@@ -35,12 +35,12 @@ let composable
   : symrel qstate
   = fun (q0 q1:qstate) ->
       composable_frac_opt q0.frac q1.frac /\
-      disjoint_qbits q0.qs q1.qs
+      disjoint q0.qs q1.qs
 
 let compose (q0:qstate) (q1:qstate{composable q0 q1})
   : qstate
   = { frac = compose_frac_opt q0.frac q1.frac;
-      qs = OrdSet.union q0.qs q1.qs;
+      qs = union q0.qs q1.qs;
       state = q0.state `tensor` q1.state }
 
 let core : pcm' qstate = {
@@ -53,18 +53,18 @@ let core : pcm' qstate = {
 let tensor_ac ()
   : Lemma (union_ac();
            // tensor is a PCM
-           (forall (qs0:_) (qs1:_{disjoint_qbits qs0 qs1}) (v0:qvec qs0) (v1:qvec qs1).
+           (forall (qs0:_) (qs1:_{disjoint qs0 qs1}) (v0:qvec qs0) (v1:qvec qs1).
               tensor v0 v1 == tensor v1 v0) /\
            (forall (qs0:_)
-              (qs1:_{disjoint_qbits qs0 qs1})
-              (qs2:_{disjoint_qbits (OrdSet.union qs0 qs1) qs2})
+              (qs1:_{disjoint qs0 qs1})
+              (qs2:_{disjoint (union qs0 qs1) qs2})
               (v0:qvec qs0)
               (v1:qvec qs1)
               (v2:qvec qs2).
               tensor (tensor v0 v1) v2 == tensor v0 (tensor v1 v2)) /\
            (forall (qs0:_)
               (qs1:_)
-              (qs2:_{disjoint_qbits qs1 qs2 /\ disjoint_qbits qs0 (OrdSet.union qs1 qs2)})
+              (qs2:_{disjoint qs1 qs2 /\ disjoint qs0 (union qs1 qs2)})
               (v0:qvec qs0)
               (v1:qvec qs1)
               (v2:qvec qs2).
@@ -72,7 +72,7 @@ let tensor_ac ()
            (forall qs0 (v0:qvec qs0).
               tensor v0 empty_qvec == v0))
   = union_ac();
-    introduce forall (qs0:_) (qs1:_{disjoint_qbits qs0 qs1}) (v0:qvec qs0) (v1:qvec qs1).
+    introduce forall (qs0:_) (qs1:_{disjoint qs0 qs1}) (v0:qvec qs0) (v1:qvec qs1).
               tensor v0 v1 == tensor v1 v0
     with tensor_comm qs0 qs1 v0 v1;
 
@@ -80,8 +80,8 @@ let tensor_ac ()
     with tensor_unit _ v0;
 
     introduce forall (qs0:_)
-                (qs1:_{disjoint_qbits qs0 qs1})
-                (qs2:_{disjoint_qbits (OrdSet.union qs0 qs1) qs2})
+                (qs1:_{disjoint qs0 qs1})
+                (qs2:_{disjoint (union qs0 qs1) qs2})
                 (v0:qvec qs0)
                 (v1:qvec qs1)
                 (v2:qvec qs2).
@@ -90,7 +90,7 @@ let tensor_ac ()
 
     introduce forall (qs0:_)
                 (qs1:_)
-                (qs2:_{disjoint_qbits qs1 qs2 /\ disjoint_qbits qs0 (OrdSet.union qs1 qs2)})
+                (qs2:_{disjoint qs1 qs2 /\ disjoint qs0 (union qs1 qs2)})
                 (v0:qvec qs0)
                 (v1:qvec qs1)
                 (v2:qvec qs2).
@@ -99,7 +99,7 @@ let tensor_ac ()
 #pop-options
 
 // a bit lazy: just calling tensor AC and letting the SMT solver do the rest
-#push-options "--fuel 0 --ifuel 1 --z3rlimit_factor 3"
+#push-options "--fuel 0 --ifuel 1 --z3rlimit_factor 6 --query_stats"
 let qstar_heap_pcm : pcm qstate =
   union_ac();
   tensor_ac ();
@@ -113,13 +113,13 @@ let qstar_heap_pcm : pcm qstate =
 }
 #pop-options
 
-let lemma_minus_disjoint (#a:eqtype) (#f:cmp a) (s1:ordset a f) (s2:ordset a f) 
+let lemma_minus_disjoint (s1 s2:qbits)
   : Lemma (requires True)
           (ensures (disjoint (s2 `minus` s1) s1))
           [SMTPat (disjoint (s2 `minus` s1) s1)]
   = admit()
 
-let lemma_subset_union_minus (#a:eqtype) (#f:cmp a) (s1:ordset a f) (s2:ordset a f) 
+let lemma_subset_union_minus (s1 s2: qbits)
   : Lemma (requires (s1 `subset` s2))
           (ensures (s1 `union` (s2 `minus` s1) == s2))
           [SMTPat (s1 `union` (s2 `minus` s1))]
