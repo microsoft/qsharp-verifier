@@ -1,10 +1,10 @@
-module QVec
+module QStar.Vec
 
-open Complex
-open Quantum
-open Matrix
+open QStar.Complex
+open QStar.Quantum
+open QStar.Matrix
 open FStar.Real
-module Matrix = Matrix //to avoid a clash with the implicitly opened FStar namespace (and FStar.Matrix)
+module Matrix = QStar.Matrix
 
 (* This module defines our representation of quantum states, operations 
    acting on quantum states, and predicates for describing quantum

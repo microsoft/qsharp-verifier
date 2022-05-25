@@ -1,7 +1,7 @@
-module QVec
+module QStar.Vec
 
 open FStar.Mul
-open Quantum
+open QStar.Quantum
 module O = FStar.OrdSet
 let qvec (qs:qbits) : Type u#0 = matrix complex (dimension qs) 1
 

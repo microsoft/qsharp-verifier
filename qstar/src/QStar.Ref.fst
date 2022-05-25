@@ -1,9 +1,9 @@
-module QStarRef
+module QStar.Ref
 open Steel.ST.Util
 open QStar.Steel.Util
-open QVec
-open QStarHeap
-module M = Matrix
+open QStar.Vec
+open QStar.Heap
+module M = QStar.Matrix
 module P = Steel.ST.GhostPCMReference
 
 let core_ref = P.ref _ qstar_heap_pcm
@@ -23,7 +23,7 @@ let apply_gate (#qs:qbits) (#state:qvec qs) (g:gate qs)
     (fun _ -> pts_to qs (apply g state))
   = let perm = elim_exists () in
     P.upd_gen qstar_state ({frac=Some (Ghost.reveal perm); qs; state}) ({frac=Some (Ghost.reveal perm); qs;state=apply g state})
-      (QStarHeap.apply_fpupd #qs #perm #state g);
+      (QStar.Heap.apply_fpupd #qs #perm #state g);
     intro_exists_erased #pperm perm (fun perm -> P.pts_to qstar_state ({frac=Some perm; qs; state=apply g state}))
 
 let split_perm (p:pperm)

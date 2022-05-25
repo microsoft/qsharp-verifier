@@ -1,4 +1,4 @@
-module Complex
+module QStar.Complex
 
 open FStar.Real
 //Use again our set of F* options well-tuned for arithmetic

@@ -1,13 +1,13 @@
-module Quantum
+module QStar.Quantum
 
 open FStar.Math.Lemmas
 open FStar.Mul
 open FStar.Real
 open FStar.FunctionalExtensionality
 //open FStar.Tactics
-open Numeric
-open Matrix
-open Complex
+open QStar.Numeric
+open QStar.Matrix
+open QStar.Complex
 
 module F = FStar.FunctionalExtensionality
 //#set-options "--smtencoding.nl_arith_repr wrapped --smtencoding.l_arith_repr native --smtencoding.elim_box true"

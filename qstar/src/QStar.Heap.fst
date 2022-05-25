@@ -1,10 +1,10 @@
-module QStarHeap
+module QStar.Heap
 open FStar.PCM
 open FStar.OrdSet
 open FStar.Real
 module Frac = Steel.FractionalPermission
 
-open QVec
+open QStar.Vec
 
 noeq
 type qstate = {

@@ -1,9 +1,9 @@
-module QStarRef
+module QStar.Ref
 open Steel.ST.Util
 open QStar.Steel.Util
-open QVec
-open QStarHeap
-module M = Matrix
+open QStar.Vec
+open QStar.Heap
+module M = QStar.Matrix
 #push-options "--ide_id_info_off"
 
 val pts_to (qs:qbits) ([@@@smt_fallback]state:qvec qs) : vprop
