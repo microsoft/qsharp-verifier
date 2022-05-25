@@ -77,10 +77,10 @@ val admit__ (#a:Type)
 let measure (#qs:qbits)
             (q:qbit{ q `OrdSet.mem` qs })
             (state:qvec qs)
-  : STT (b:bool { Some? (proj q b state) })
+  : STT bool
     (pts_to qs state)
     (fun b -> pts_to (single q) (singleton q b) `star`
-           pts_to (qs `OrdSet.minus` (single q)) (disc q b state))
+           pts_to (qs `OrdSet.minus` (single q)) (proj_and_disc q b state))
   = admit__()
 
 let alloc ()

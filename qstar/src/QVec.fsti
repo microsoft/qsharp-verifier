@@ -5,6 +5,7 @@ open Quantum
 open Matrix
 open FStar.Real
 open FStar.OrdSet
+module Matrix = Matrix //to avoid a clash with the implicitly opened FStar namespace (and FStar.Matrix)
 
 (* This module defines our representation of quantum states, operations 
    acting on quantum states, and predicates for describing quantum
