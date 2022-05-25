@@ -178,5 +178,3 @@ let teleport (#qs:qbits)
     teleport_lemma (fst bits) (snd bits) qB qs (relabel_indices (union (single qB) qs) state);
     rewrite (pts_to (union (single qB) qs) _)
             (pts_to (union (single qB) qs) (relabel_indices (union (single qB) qs) state))
-
-
