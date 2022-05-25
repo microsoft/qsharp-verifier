@@ -174,3 +174,12 @@ let measure2 (qA:qbit) (qB:qbit) (rest:qbits { qA <> qB /\ disjoint (double qA q
                         (proj_and_disc qA (fst res) s))));
     return res
 
+let disjointness #o (qs:qbits) (#qv:qvec qs)
+                    (qs':qbits) (#qv':qvec qs')
+  : STGhost unit o
+    (pts_to qs qv `star` pts_to qs' qv')
+    (fun _ -> pts_to qs qv `star` pts_to qs' qv')
+    (requires True)
+    (ensures fun _ -> disjoint qs qs')
+  = gather qs qs' #_ #_;
+    share qs qs' #_ #_

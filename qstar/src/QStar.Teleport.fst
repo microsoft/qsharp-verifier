@@ -12,10 +12,10 @@ operation Entangle (qAlice : Qubit, qBob : Qubit) : Unit is Adj {
     CNOT(qAlice, qBob);
 } 
 *)
-let entangle (qA:qbit) (qB:qbit{qA <> qB})
+let entangle (qA:qbit) (qB:qbit)
   : STT unit
         (pts_to (single qA) (singleton _ false) `star` 
-           pts_to (single qB) (singleton _ false))
+         pts_to (single qB) (singleton _ false))
         (fun _ -> pts_to (double qA qB) (bell00 qA qB))
   = apply_gate (hadamard qA);
     let _ = gather (single qA) (single qB) #_ #_ in
@@ -77,9 +77,9 @@ let send_msg_lemma (qs:qbits)
 val send_msg (#qs:qbits) 
              (#qB:qbit) 
              (qA:qbit) 
-             (qM:qbit { qA <> qB /\
-                        qM <> qA /\
-                        qM <> qB /\
+             (qM:qbit { qA <> qB /\ 
+                        qM <> qA /\ //these are ugly
+                        qM <> qB /\ //we have them from the *
                         disjoint (triple qA qB qM) qs })
              (#state:qvec (single qM `union` qs))
   : STT (bool * bool)
@@ -106,25 +106,48 @@ let send_msg #qs #qB qA qM #state
     rewrite (pts_to (single qB `union` qs) _) _;
     return bits
 
-// (*
+let apply_if (b:bool) (#qs:qbits) (#s:qvec qs) (g:gate qs)
+  : STT unit
+    (pts_to qs s)
+    (fun _ -> pts_to qs (opt_apply b g s))
+  = if b returns STT unit (pts_to qs s) (fun _ -> pts_to qs (opt_apply b g s))
+    then apply_gate g
+    else (noop (); return ())
+    
 // operation DecodeMsg (qBob : Qubit, (b1 : Bool, b2 : Bool))
 // : Unit {
 //     if b1 { Z(qBob); }
 //     if b2 { X(qBob); }
 // }
 // *)
-// let decode_msg (qB:qbit) (#state:_) (bits:bool * bool)
-//   : STT unit
-//         (pts_to (single qB) state)
-//         (fun _ -> pts_to (single qB) 
-//                  (let (b1, b2) = bits in
-//                   opt_apply b2 (pauli_x _) (opt_apply b1 (pauli_z _) state)))
-//   = //let (b1, b2) = bits in
-//     //if b1 then apply_gate (pauli_z qB);
-//     //if b2 then apply_gate (pauli_x qB)
-//     admit__ ()
+let decode_msg (qB:qbit) 
+               (qs:qbits { disjoint (single qB) qs })
+               (#state:qvec (single qB `union` qs))
+               (bits:bool * bool)
+  : STT unit
+        (pts_to (single qB `union` qs) state)
+        (fun _ -> pts_to (single qB `union` qs) 
+                      (opt_apply (snd bits) 
+                                 (lift (single qB) qs (pauli_x _))
+                                 (opt_apply (fst bits) 
+                                            (lift (single qB) qs (pauli_z _))
+                                            state)))
+  = apply_if (fst bits) (lift (single qB) qs (pauli_z _));
+    apply_if (snd bits) (lift (single qB) qs (pauli_x _))
 
-// (*
+let teleport_lemma (b1 b2:bool)
+                   (qB: qbit)
+                   (qs: qbits {disjoint (single qB) qs })
+                   (s: qvec (union (single qB) qs))
+  : Lemma (opt_apply b2 (lift (single qB) qs (pauli_x qB))
+                        (opt_apply b1 (lift (single qB) qs (pauli_z qB))
+                                      (opt_apply b1 (lift (single qB) qs (pauli_z qB))
+                                                    (opt_apply b2 (lift (single qB) qs (pauli_x qB))
+                                                                  s))) ==
+           s)
+  = admit()           
+                                                                  
+(*
 // operation Teleport (qMsg : Qubit, qBob : Qubit)
 // : Unit {
 //     use qAlice = Qubit();
@@ -133,26 +156,27 @@ let send_msg #qs #qB qA qM #state
 //     DecodeMsg(qBob, classicalBits);
 // }
 // *)
-// let teleport (#qs:qbits) 
-//              (qM:qbit{OrdSet.disjoint (single qM) qs}) 
-//              (#state:qvec (OrdSet.union (single qM) qs)) 
-//              (qB:qbit{qB <> qM /\ OrdSet.disjoint (single qB) qs})
-//   : STT unit
-//         (pts_to (OrdSet.union (single qM) qs) state `star` 
-//          pts_to (single qB) (singleton _ false))
-//         (fun _ -> pts_to (OrdSet.union (single qB) qs) 
-//                       (relabel_indices _ state))
-//   = //let qA = alloc () in
-//     //entangle qA qB;
-
-//     // gather qA, qB, and qM+qs
-
-//     //let bits = send_msg qA qM in
-//     //decode_msg qB bits;
-
-//     // destruct "bits" and use the facts that pauli_x and pauli_z are self-adjoint
-
-//     //discard qA _
-//     admit__ ()
+let teleport (#qs:qbits) 
+             (qM:qbit{disjoint (single qM) qs}) 
+             (#state:qvec (union (single qM) qs)) 
+             (qB:qbit{qB <> qM /\ disjoint (single qB) qs})
+  : STT unit
+        (pts_to (union (single qM) qs) state `star` 
+         pts_to (single qB) (singleton _ false))
+        (fun _ -> pts_to (union (single qB) qs) 
+                      (relabel_indices _ state))
+  = let qA = alloc () in
+    (* this is a bit ugly, since our specs have explicit disjointnes 
+       constraints in them rather than relying just on `star` *)
+    disjointness (single qA) #_ (single qB) #_;
+    disjointness (single qA) #_ (union _ _) #_;    
+    entangle qA qB;
+    let bits = send_msg qA qM #_ in
+    decode_msg qB qs bits;
+    discard qA _;
+    discard qM _; //qM is discardable too
+    teleport_lemma (fst bits) (snd bits) qB qs (relabel_indices (union (single qB) qs) state);
+    rewrite (pts_to (union (single qB) qs) _)
+            (pts_to (union (single qB) qs) (relabel_indices (union (single qB) qs) state))
 
 
