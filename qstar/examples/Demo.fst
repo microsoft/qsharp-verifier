@@ -1,8 +1,8 @@
 module Demo
 
-open QInst
-open QMap
-open QState
+open QStar.QInst
+open QStar.QMap
+open QStar.QState
 
 (* ************************
 
