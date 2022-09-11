@@ -37,6 +37,15 @@ let cnot_mat : matrix complex 4 4 =
           else if i = 3 && j = 2 then c1
           else c0)
 
+let swap_mat : matrix complex 4 4 =
+  F.on (knat 4 & knat 4)
+       (fun (i,j) ->
+          if i = 0 && j = 0 then c1
+          else if i = 1 && j = 2 then c1
+          else if i = 2 && j = 1 then c1
+          else if i = 3 && j = 3 then c1
+          else c0)
+
 // unitarity condition
 // NOTE: we could also include this in the type of the matrices above
 let unitary (#n:dim) (x:matrix complex n n) =
@@ -104,7 +113,6 @@ let lemma_pad_control_unitary (n:dim) (q1 q2:knat n) (mat:matrix complex 2 2)
   = admit()
 
 // normalize a vector
-// ** requires that the input vector has nonzero 
 let normalize (#n:dim) (v:matrix complex n 1) : matrix complex n 1 = 
   if norm v = 0.0R
   then zero_matrix complex n 1

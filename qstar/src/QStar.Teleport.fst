@@ -6,12 +6,10 @@ module M = QStar.Matrix
 open QStar.Ref
 #push-options "--ide_id_info_off"
 
-(*
-operation Entangle (qAlice : Qubit, qBob : Qubit) : Unit is Adj {
-    H(qAlice);
-    CNOT(qAlice, qBob);
-} 
-*)
+// operation Entangle (qAlice : Qubit, qBob : Qubit) : Unit is Adj {
+//     H(qAlice);
+//     CNOT(qAlice, qBob);
+// } 
 let entangle (qA:qbit) (qB:qbit)
   : STT unit
         (pts_to (single qA) (singleton _ false) `star` 
@@ -39,16 +37,13 @@ let rewrite_set #o #qs1 (#state:qvec qs1) (qs2:qbits{equal qs1 qs2})
     (fun _ -> pts_to qs2 state)
   = rewrite _ _ 
 
-(*
-operation SendMsg (qAlice : Qubit, qMsg : Qubit)
-: (Bool, Bool) {
-    Adjoint Entangle(qMsg, qAlice);
-    let m1 = M(qMsg);
-    let m2 = M(qAlice);
-    return (m1 == One, m2 == One);
-}
-*)
-
+// operation SendMsg (qAlice : Qubit, qMsg : Qubit)
+// : (Bool, Bool) {
+//     Adjoint Entangle(qMsg, qAlice);
+//     let m1 = M(qMsg);
+//     let m2 = M(qAlice);
+//     return (m1 == One, m2 == One);
+// }
 let send_msg_lemma (qs:qbits) 
                    (qB:qbit) 
                    (qA:qbit{qA <> qB}) 
@@ -119,7 +114,6 @@ let apply_if (b:bool) (#qs:qbits) (#s:qvec qs) (g:gate qs)
 //     if b1 { Z(qBob); }
 //     if b2 { X(qBob); }
 // }
-// *)
 let decode_msg (qB:qbit) 
                (qs:qbits { disjoint (single qB) qs })
                (#state:qvec (single qB `union` qs))
@@ -147,7 +141,6 @@ let teleport_lemma (b1 b2:bool)
            s)
   = admit()           
                                                                   
-(*
 // operation Teleport (qMsg : Qubit, qBob : Qubit)
 // : Unit {
 //     use qAlice = Qubit();
@@ -155,7 +148,6 @@ let teleport_lemma (b1 b2:bool)
 //     let classicalBits = SendMsg(qAlice, qMsg);
 //     DecodeMsg(qBob, classicalBits);
 // }
-// *)
 let teleport (#qs:qbits) 
              (qM:qbit{disjoint (single qM) qs}) 
              (#state:qvec (union (single qM) qs)) 

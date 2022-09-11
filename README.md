@@ -1,16 +1,15 @@
-# Formal verification for Q#
+# Formal Verification for Q#
 
-This repo contains Q* (pronounced Q-star), a tool for formally verifying quantum programs written in [Q#](https://docs.microsoft.com/en-us/azure/quantum/overview-what-is-qsharp-and-qdk).
+This repository contains Q* (pronounced Q-star), a tool for formally verifying quantum programs written in [Q#](https://docs.microsoft.com/en-us/azure/quantum/overview-what-is-qsharp-and-qdk).
 It is implemented as a library for [F*](https://www.fstar-lang.org/) and is currently in the prototype stage of development.
 Its goal is to allow Q# developers to formally reason about their programs, providing stronger correctness guarantees than testing and leading to higher-quality Q# code.
+
+**Note**: The `sep-logic` branch contains preliminary work building Q* on top of [Steel](https://dl.acm.org/doi/abs/10.1145/3473590), a language for verifying concurrent programs, which is built on top of F*'s concurrent separation logic, SteelCore. In this branch, you can ignore the `examples` and `qstar/translator` directories. Only the code in `qstar/src` is relevant.
 
 ## Directory
 
 - [`qstar/examples`](qstar/examples): Examples and demos of using Q* and the Q#-to-Q* translator.
-- [`qstar/src`](qstar/src): Q* library code, written in F*.
-  - Utility modules for describing complex numbers, matrices, and common quantum constants, like the Hadamard matrix (`Complex`, `Matrix`, `Numeric`, `Quantum`).
-  - Interface for working with quantum state and an implementation in terms of complex vectors (`QState`).
-  - Quantum instructions (`QInstr`).
+- [`qstar/src`](qstar/src): Q* library code, written in F*. See the (README)[qstar/src/README.md] in that directory for more information.
 - [`qstar/translator`](qstar/translator): Plugin for the Q# compiler to automatically translate Q# programs into Q* instructions.
 
 ## Requirements

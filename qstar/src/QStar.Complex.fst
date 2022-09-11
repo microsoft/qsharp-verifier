@@ -45,8 +45,6 @@ let cinv (r,i) = (r /. (r *. r +. i *. i), 0.0R -. i /. (r *. r +. i *. i))
 // let cmod (r,i) = sqrt (sqr r +. sqr i)
 val cmod : (c : complex) -> r:real{sqr r = (sqr (fst c) +. sqr (snd c))}
 
-// let sqr0_test = assert (forall x . x *. x = 0.0R -> x = 0.0R) // Fails
-
 (* Direct definition of cdiv
 val cdiv : complex -> y:complex{fst y *. fst y +. snd y *. snd y <> 0.0R} -> Tot complex
 let cdiv (r1,i1) (r2,i2) = ((r1 *. r2 +. i1 *. i2) /. (r2 *. r2 +. i2 *. i2), 
@@ -157,9 +155,6 @@ let cconj_of_real = assert (forall x. cconj (of_real x) = of_real x)
 let cadd_of_real = assert (forall x y. cadd (of_real x) (of_real y) = of_real (x +. y))
 let csub_of_real = assert (forall x y. csub (of_real x) (of_real y) = of_real (x -. y))
 let cmul_of_real = assert (forall x y. cmul (of_real x) (of_real y) = of_real (x *. y))
-// let cdiv_of_real = assert (forall x (y:real{y<>0}). cdiv (of_real x) (of_real y) = of_real (x /. y)) // I don't know how to make this typecheck
-
-
 
 (* From Leonardo de Moura's blog:
 
