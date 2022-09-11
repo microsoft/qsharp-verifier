@@ -2,9 +2,9 @@ module DemoProofs
 
 open FStar.Real
 
-open QInst
-open QMap
-open QState
+open QStar.QInst
+open QStar.QMap
+open QStar.QState
 open Demo
 
 // wrapper around eval_inst_tree

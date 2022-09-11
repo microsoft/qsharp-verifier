@@ -1,4 +1,4 @@
-module QState
+module QStar.QState
 open FStar.Real
 
 (* This module defines our representation of quantum states, operations 

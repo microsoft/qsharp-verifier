@@ -1,23 +1,22 @@
-# Formal verification for Q#
+# Formal Verification for Q#
 
-This repo contains Q* (pronounced Q-star), a tool for formally verifying quantum programs written in [Q#](https://docs.microsoft.com/en-us/azure/quantum/overview-what-is-qsharp-and-qdk).
+This repository contains Q* (pronounced Q-star), a tool for formally verifying quantum programs written in [Q#](https://docs.microsoft.com/en-us/azure/quantum/overview-what-is-qsharp-and-qdk).
 It is implemented as a library for [F*](https://www.fstar-lang.org/) and is currently in the prototype stage of development.
 Its goal is to allow Q# developers to formally reason about their programs, providing stronger correctness guarantees than testing and leading to higher-quality Q# code.
+
+This code in this repository loosely corresponds to the vision outlined in Ch. 5 of [Kesha Hietala's dissertation](https://khieta.github.io/files/drafts/khieta-dissertation.pdf).
 
 ## Directory
 
 - [`qstar/examples`](qstar/examples): Examples and demos of using Q* and the Q#-to-Q* translator.
-- [`qstar/src`](qstar/src): Q* library code, written in F*.
-  - Utility modules for describing complex numbers, matrices, and common quantum constants, like the Hadamard matrix (`Complex`, `Matrix`, `Numeric`, `Quantum`).
-  - Interface for working with quantum state and an implementation in terms of complex vectors (`QState`).
-  - Quantum instructions (`QInstr`).
+- [`qstar/src`](qstar/src): Q* library code, written in F*. See the (README)[qstar/src/README.md] in that directory for more information.
 - [`qstar/translator`](qstar/translator): Plugin for the Q# compiler to automatically translate Q# programs into Q* instructions.
 
 ## Requirements
 
 Install [F*](https://www.fstar-lang.org/) and [.NET](https://dotnet.microsoft.com/en-us/download).
 
-When building F* from source, we recommend using the `everest` script from [Project Everest](https://github.com/project-everest/everest):
+If building F* from source, we recommend using the `everest` script from [Project Everest](https://github.com/project-everest/everest):
 
 ```
 ./everest check
@@ -27,8 +26,9 @@ When building F* from source, we recommend using the `everest` script from [Proj
 ## Demo
 
 You can convert the [Examples.qs](qstar/examples/Examples.qs) file into Q\* instruction trees by running `dotnet build` from the `qstar/examples` directory.
+This will produce an F* file in `qstar/examples/obj/QStar`.
 A prettified excerpt from the output is in [Demo.fst](qstar/examples/Demo.fst).
-You should be able to type check this file in F*, indicating that our Q# definitions satisfy basic well-formedness properties.
+You should be able to typecheck this file in F* (e.g., by copying it into the `qstar/src` directory and running `make`), indicating that our Q# definitions satisfy basic well-formedness properties.
 Proofs about the semantics of the example programs are in [DemoProofs.fst](qstar/examples/DemoProofs.fst).
 
 ## Contributing

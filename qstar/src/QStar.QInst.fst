@@ -1,12 +1,12 @@
-module QInst
+module QStar.QInst
 
 open FStar.List.Tot
 open FStar.Mul
 
 open FStar.Real
 
-open QMap
-open QState
+open QStar.QMap
+open QStar.QState
 
 let pre = valid_qmap -> prop
 let post a = a -> valid_qmap -> valid_qmap -> prop

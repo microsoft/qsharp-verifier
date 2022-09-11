@@ -1,4 +1,4 @@
-module QMap
+module QStar.QMap
 
 assume
 val qref : eqtype

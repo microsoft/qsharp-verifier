@@ -1,4 +1,4 @@
-module Matrix
+module QStar.Matrix
 
 open FStar.Mul
 open FStar.FunctionalExtensionality
@@ -6,7 +6,7 @@ module F = FStar.FunctionalExtensionality
 open FStar.Tactics
 module Math = FStar.Math.Lemmas
 
-open Numeric
+open QStar.Numeric
 
 (* general types useful for matrices *)
 type dim = i:int{i > 0} // type for matrix dimensions; don't worry about #rows or #cols = 0
@@ -824,12 +824,12 @@ let k_index (#a:Type) {| numeric a |} (#m #n #p #q:dim) (x1:matrix a m n) (x2:ma
 //Reset the solver, keeping only what we need using `using_facts_from`
 #reset-options
   "--using_facts_from \
-        'Prims Matrix.dprod \
-         Matrix.dprod_equiv \
-         Matrix.dim \
-         Matrix.knat \
-         Matrix.kdiv \
-         Matrix.kmod' \
+        'Prims QStar.Matrix.dprod \
+         QStar.Matrix.dprod_equiv \
+         QStar.Matrix.dim \
+         QStar.Matrix.knat \
+         QStar.Matrix.kdiv \
+         QStar.Matrix.kmod' \
    --z3cliopt 'smt.arith.nl=false'" //TURN OFF non-linear arithmetic in Z3 for this proof; it's too flaky
 
 //Use again our set of F* options well-tuned for arithmetic

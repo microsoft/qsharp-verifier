@@ -1,13 +1,13 @@
-module Quantum
+module QStar.Quantum
 
 open FStar.Math.Lemmas
 open FStar.Mul
 open FStar.Real
 open FStar.FunctionalExtensionality
 //open FStar.Tactics
-open Numeric
-open Matrix
-open Complex
+open QStar.Numeric
+open QStar.Matrix
+open QStar.Complex
 
 module F = FStar.FunctionalExtensionality
 //#set-options "--smtencoding.nl_arith_repr wrapped --smtencoding.l_arith_repr native --smtencoding.elim_box true"
@@ -37,6 +37,15 @@ let cnot_mat : matrix complex 4 4 =
           else if i = 3 && j = 2 then c1
           else c0)
 
+let swap_mat : matrix complex 4 4 =
+  F.on (knat 4 & knat 4)
+       (fun (i,j) ->
+          if i = 0 && j = 0 then c1
+          else if i = 1 && j = 2 then c1
+          else if i = 2 && j = 1 then c1
+          else if i = 3 && j = 3 then c1
+          else c0)
+
 // unitarity condition
 // NOTE: we could also include this in the type of the matrices above
 let unitary (#n:dim) (x:matrix complex n n) =
@@ -63,24 +72,23 @@ let lemma_unitary_preserves_norm (n:dim) (mat:matrix complex n n) (v:matrix comp
           (ensures unit_norm (matrix_mul mat v))
   = admit()
 
-let lemma_pow2_prod n (q:knat n)
-  : Lemma (ensures (pow2 q * (2 * pow2 (n - q - 1)) = pow2 n))
-  = assert (q + 1 + (n - q - 1) = n);
-    assert (2 = pow2 1);
-    Math.Lemmas.pow2_plus q 1;
-    Math.Lemmas.pow2_plus (q + 1) (n - q - 1)
+let lemma_pow2_prod (n m:dim) (q:nat{q <= n - m})
+  : Lemma (ensures (pow2 q * (pow2 m * pow2 (n - q - m)) = pow2 n))
+  = assert (q + m + (n - q - m) = n);
+    Math.Lemmas.pow2_plus m (n - q - m);
+    Math.Lemmas.pow2_plus q (m + (n - q - m))
 
-// extend a 2x2 matrix to a n-dimensional space
-let pad (n:dim) (q:knat n) (mat:matrix complex 2 2) 
+// extend a 2^m x 2^m matrix to a 2^n-dimensional space
+let pad (m n:dim) (q:nat{q <= n - m}) (mat:matrix complex (pow2 m) (pow2 m)) 
   : matrix complex (pow2 n) (pow2 n)
-  = lemma_pow2_prod n q;
+  = lemma_pow2_prod n m q;
     kronecker_product 
       (id_matrix complex (pow2 q)) 
-      (kronecker_product mat (id_matrix complex (pow2 (n - q - 1))))
+      (kronecker_product mat (id_matrix complex (pow2 (n - q - m))))
 
 let lemma_pad_unitary (n:dim) (q:knat n) (mat:matrix complex 2 2) 
   : Lemma (requires (unitary mat))
-          (ensures (unitary (pad n q mat)))
+          (ensures (unitary (pad 1 n q mat)))
   = admit()
 
 // |0> or |1>
@@ -97,7 +105,7 @@ let proj1 : matrix complex 2 2 =
 // extend a controlled 2x2 matrix a n-dimensional space
 let pad_control (n:dim) (q1 q2:knat n) (mat:matrix complex 2 2) 
   : matrix complex (pow2 n) (pow2 n)
-  = matrix_add (pad n q1 proj0) (matrix_mul (pad n q1 proj1) (pad n q2 mat))
+  = matrix_add (pad 1 n q1 proj0) (matrix_mul (pad 1 n q1 proj1) (pad 1 n q2 mat))
 
 let lemma_pad_control_unitary (n:dim) (q1 q2:knat n) (mat:matrix complex 2 2)
   : Lemma (requires (unitary mat))
@@ -105,7 +113,6 @@ let lemma_pad_control_unitary (n:dim) (q1 q2:knat n) (mat:matrix complex 2 2)
   = admit()
 
 // normalize a vector
-// ** requires that the input vector has nonzero 
 let normalize (#n:dim) (v:matrix complex n 1) : matrix complex n 1 = 
   if norm v = 0.0R
   then zero_matrix complex n 1
@@ -119,5 +126,5 @@ let lemma_normalize_norm_1 (#n:dim) (v:matrix complex n 1)
 // project a vector onto the subspace where qubit q is |0> or |1>
 let project (#n:dim) (q:knat n) (b:bool) (v:matrix complex (pow2 n) 1) =
   let proj = if b then proj1 else proj0 in
-  matrix_mul (pad n q proj) v
+  matrix_mul (pad 1 n q proj) v
 // TODO: generaize to arbitrary subspaces

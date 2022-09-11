@@ -1,4 +1,4 @@
-module Numeric
+module QStar.Numeric
 
 open FStar.Mul
 
@@ -65,7 +65,7 @@ instance numeric_real : numeric real = {
   conj_mul_distr = ()
   }
 
-open Complex
+open QStar.Complex
 
 instance numeric_complex : numeric complex = {
   zero = c0;

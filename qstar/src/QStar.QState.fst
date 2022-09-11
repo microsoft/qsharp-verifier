@@ -1,22 +1,22 @@
-module QState
+module QStar.QState
 
 open FStar.Mul
 open FStar.Real
-open Complex
-open Matrix
-open Quantum
+open QStar.Complex
+open QStar.Matrix
+open QStar.Quantum
 
 module F = FStar.FunctionalExtensionality
 
 // qstate (p,v) = vector v with (classical) probability p
 // TODO: we may want to add the restriction that v has unit norm,
 //       but this will make the definitions below more painful
-type qstate (n:nat) = real & v:matrix complex (pow2 n) 1
+type qstate (n:nat) = real & matrix complex (pow2 n) 1
 
 // we need to call auxiliary 
 let apply_H #n q qs =
   let (p,v) = qs in
-  (p, matrix_mul (pad n q hadamard_mat) v)
+  (p, matrix_mul (pad 1 n q hadamard_mat) v)
 
 // similar to apply_H
 let apply_X #n q qs = admit()
