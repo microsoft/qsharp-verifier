@@ -20,6 +20,8 @@ let dimension_union (qs0:qbits) (qs1:qbits{disjoint qs0 qs1})
           [SMTPat (dimension (union qs0 qs1))]
   = Math.Lemmas.pow2_plus (O.size qs0) (O.size qs1)
 
+(* IN PROGRESS -- IGNORE
+
 // permutation matrix
 let perm_matrix (#a:Type) {| numeric a |} (m:dim) (p : knat m -> knat m) : matrix a m m = 
   F.on (knat m & knat m) 
@@ -56,6 +58,9 @@ let lemma_reorder_indices_same m n s1 s2 (v : matrix complex m n)
   : Lemma (requires (s1 == s2))
           (ensures reorder_indices s1 s2 v == v)
   = admit()
+*)
+
+let tensor v0 v1 = admit()
 
 let tensor_unit qs v
   : Lemma (ensures tensor v empty_qvec == v)
@@ -67,12 +72,12 @@ let tensor_comm qs0 qs1 v0 v1
   = admit()
 
 let tensor_assoc_l #qs0 #qs1 #qs2 v0 v1 v2
-  : Lemma (tensor (tensor v0 v1) v2 == tensor v0 (tensor v1 v2))
+  : Lemma (tensor (tensor v0 v1) v2 `qvec_equiv` tensor v0 (tensor v1 v2))
   = admit()
 
 let tensor_assoc_r #qs0 #qs1 #qs2 v0 v1 v2
   : Lemma (union_ac ();
-           tensor (tensor v0 v1) v2 == tensor v0 (tensor v1 v2))
+           tensor (tensor v0 v1) v2 `qvec_equiv` tensor v0 (tensor v1 v2))
   = admit()
 
 let singleton (q:qbit) (b:bool) : qvec (single q) = ket b

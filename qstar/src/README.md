@@ -9,8 +9,7 @@ General utilities:
 - [`QStar.Quantum.fst`](QStar.Quantum.fst): Common quantum constants and operations (e.g., pad, vector normalization)
 
 Unique to the `sep-logic` branch:
-- `QStar.Heap.fst`
-- `QStar.Ref.fst(i)`
-- `QStar.Steel.Util.fst`
-- `QStar.Teleport.fst`
-- `QStar.Vec.fst(i)`
+- [`QStar.Vec.fst(i)`](QStar.Vec.fsti): Abstraction for vectors with a commutative tensor operation (warning: many admits)
+- [`QStar.Heap.fst`](QStar.Heap.fst): Definition of quantum state and proof that it is a PCM
+- [`QStar.Ref.fst(i)`](QStar.Ref.fsti): Definition of the `pts_to` predicate and various operations on the quantum state
+- [`QStar.Teleport.fst`](QStar.Teleport.fst`): Quantum teleportation example
