@@ -9,7 +9,7 @@ This code in this repository loosely corresponds to the vision outlined in Ch. 5
 ## Directory
 
 - [`qstar/examples`](qstar/examples): Examples and demos of using Q* and the Q#-to-Q* translator.
-- [`qstar/src`](qstar/src): Q* library code, written in F*. See the (README)[qstar/src/README.md] in that directory for more information.
+- [`qstar/src`](qstar/src): Q* library code, written in F*. See the [README](qstar/src/README.md) in that directory for more information.
 - [`qstar/translator`](qstar/translator): Plugin for the Q# compiler to automatically translate Q# programs into Q* instructions.
 
 ## Requirements
