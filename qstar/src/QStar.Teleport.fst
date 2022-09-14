@@ -158,15 +158,15 @@ let teleport (#qs:qbits)
         (fun _ -> pts_to (union (single qB) qs) 
                       (relabel_indices _ state))
   = let qA = alloc () in
-    (* this is a bit ugly, since our specs have explicit disjointnes 
-       constraints in them rather than relying just on `star` *)
-    disjointness (single qA) #_ (single qB) #_;
-    disjointness (single qA) #_ (union _ _) #_;    
+    disjointness (single qA) (single qB) #_;
+    disjointness (single qA) (union (single qM) qs) #_;
     entangle qA qB;
     let bits = send_msg qA qM #_ in
     decode_msg qB qs bits;
     discard qA _;
-    discard qM _; //qM is discardable too
-    teleport_lemma (fst bits) (snd bits) qB qs (relabel_indices (union (single qB) qs) state);
+    discard qM _; 
+    teleport_lemma (fst bits) (snd bits) qB qs 
+                   (relabel_indices (union (single qB) qs) state);
     rewrite (pts_to (union (single qB) qs) _)
-            (pts_to (union (single qB) qs) (relabel_indices (union (single qB) qs) state))
+            (pts_to (union (single qB) qs) 
+                    (relabel_indices (union (single qB) qs) state))

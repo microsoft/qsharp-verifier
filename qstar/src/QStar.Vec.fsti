@@ -50,8 +50,6 @@ let union_assoc (qs0 qs1 qs2:qbits)
   : Lemma (union qs0 (union qs1 qs2) `equal` union (union qs0 qs1) qs2)
   = ()
 
-// Can we define tensor over any qs0 qs1, 
-// and like proj it is meaingless with qs0 and qs1 are not disjoint
 val tensor (#qs0:qbits)
            (#qs1:qbits)
            (v0:qvec qs0)
@@ -94,7 +92,6 @@ let triple (q1:qbit) (q2:qbit) (q3:qbit) : qbits =
 
 let mem (q:qbit) (qs:qbits) : bool = OrdSet.mem q qs
 
-// Can we define this even when q is not a mem in qs?
 val proj (#qs:qbits)
          (q:qbit)
          (b:bool)
