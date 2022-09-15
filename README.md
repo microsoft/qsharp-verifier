@@ -4,7 +4,7 @@ This repository contains Q* (pronounced Q-star), a tool for formally verifying q
 It is implemented as a library for [F*](https://www.fstar-lang.org/) and is currently in the prototype stage of development.
 Its goal is to allow Q# developers to formally reason about their programs, providing stronger correctness guarantees than testing and leading to higher-quality Q# code.
 
-**Note**: The `sep-logic` branch contains preliminary work building Q* on top of [Steel](https://dl.acm.org/doi/abs/10.1145/3473590), a language for verifying concurrent programs, which is built on top of F*'s concurrent separation logic, SteelCore. In this branch, you can ignore the `examples` and `qstar/translator` directories. Only the code in `qstar/src` is relevant.
+**NOTE**: The `sep-logic` branch contains preliminary work building Q* on top of [Steel](https://dl.acm.org/doi/abs/10.1145/3473590), a language for verifying concurrent programs that is built on top of F*'s concurrent separation logic, SteelCore. In this branch, you can ignore the `examples` and `qstar/translator` directories. Only the code in `qstar/src` is relevant.
 
 ## Directory
 

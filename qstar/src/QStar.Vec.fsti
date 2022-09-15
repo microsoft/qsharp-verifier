@@ -141,15 +141,6 @@ let self_adjoint (#qs:qbits) (g: gate qs) =
 val hadamard_self_adjoint (q:qbit)
   : Lemma (ensures self_adjoint (hadamard q))
 
-val pauli_x_self_adjoint (q:qbit)
-  : Lemma (ensures self_adjoint (pauli_x q))
-
-val pauli_z_self_adjoint (q:qbit)
-  : Lemma (ensures self_adjoint (pauli_z q))
-
-val cnot_self_adjoint (q1:qbit) (q2:qbit{q1 <> q2})
-  : Lemma (ensures self_adjoint (cnot q1 q2))
-
 /// Abstractions for defining vector states
 
 val scale (#qs:qbits) (c:complex) (v:qvec qs) : qvec qs

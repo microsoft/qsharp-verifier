@@ -1,6 +1,7 @@
 module QStar.Vec
 
 open FStar.Mul
+open FStar.List.Tot
 open QStar.Quantum
 module O = FStar.OrdSet
 module F = FStar.FunctionalExtensionality
@@ -16,26 +17,11 @@ let size_disjoint_union (#a:eqtype) (#f:O.cmp a) (s1 s2:O.ordset a f)
   = admit()
 
 let dimension_union (qs0:qbits) (qs1:qbits{disjoint qs0 qs1})
-  : Lemma (ensures dimension (union qs0 qs1) = dimension qs0 * dimension qs1)
-          [SMTPat (dimension (union qs0 qs1))]
+  : Lemma (ensures dimension (O.union qs0 qs1) = dimension qs0 * dimension qs1)
+          [SMTPat (dimension (O.union qs0 qs1))]
   = Math.Lemmas.pow2_plus (O.size qs0) (O.size qs1)
 
-(* IN PROGRESS -- IGNORE
-
-// permutation matrix
-let perm_matrix (#a:Type) {| numeric a |} (m:dim) (p : knat m -> knat m) : matrix a m m = 
-  F.on (knat m & knat m) 
-       (fun (i,j) -> if i = p j then one else zero)
-
-// given a permutation p over n qubits, construct a permutation over 2^n indices
-let qubit_perm_to_nat_perm (n : dim) (p : knat n -> knat n) :=
-  fun (x:knat n) -> funbool_to_nat n ((nat_to_funbool n x) ∘ p).
-
-// convert a (0,...,n-1) permutation into a 2^n by 2^n matrix
-// NOTE: the specialization to complex number isn't required, it just saves some keystrokes
-let perm_to_matrix (n : dim) (p : knat n -> knat n) : matrix complex (2 ^ n) (2 ^ n)
-  = perm_matrix (2 ^ n) (qubit_perm_to_nat_perm n p).
-
+// SKETCH
 // given seq s1, permutation s2, and matrix m, apply a permutation matrix that reorders 
 // the elements of m to be consistent with s2, assuming they were originally ordered
 // according to s1
@@ -43,24 +29,23 @@ let perm_to_matrix (n : dim) (p : knat n -> knat n) : matrix complex (2 ^ n) (2 
 // e.g., let s1 = [c, a, b] and s2 = [a, b, c]; then reorder_indices will apply a matrix
 // that implements the following qubit permutation: {0 -> 2, 1 -> 0, 2 -> 1}
 let reorder_indices #m #n s1 s2 (v : matrix complex m n) : matrix complex m n = 
-  matrix_mul (perm_to_matrix (length s1) ...) v
+  admit()
 
-// TODO: can we expose this in the OrdSet interface?
-assume
-val as_list (#a:eqtype) (#f:O.cmp a) (s:O.ordset a f) : Tot (l:list a{O.sorted f l})
-
+// Idea: apply the standard Kronecker product and then multiply by a permutation
+// matrix (called reorder_indices) that orders the qubits according to their sorted order.
+//
+// We need to get rid of the assume in this function. In the case where 
+// qs0, qs1 overlap, we should return some default value (like the zero vector).
 let tensor #qs0 #qs1 v0 v1 = 
-  reorder_indices (as_list qs0 ++ as_list qs1)  // input ordering
-                  (as_list (qs0 `O.union` qs1)) // output ordering
+  assume (disjoint qs0 qs1); 
+  reorder_indices (O.as_list qs0 @ O.as_list qs1) // input ordering
+                  (O.as_list (qs0 `O.union` qs1)) // output ordering
                   (kronecker_product v0 v1)
 
 let lemma_reorder_indices_same m n s1 s2 (v : matrix complex m n) 
   : Lemma (requires (s1 == s2))
           (ensures reorder_indices s1 s2 v == v)
   = admit()
-*)
-
-let tensor v0 v1 = admit()
 
 let tensor_unit qs v
   : Lemma (ensures tensor v empty_qvec == v)
@@ -95,9 +80,10 @@ let disc (#qs:qbits)
   : qvec (qs `OrdSet.minus` single q)
   = admit()
 
+// The intention of this function is to "relabel" the qubits in s, which
+// are originally labelled according to qs1, according to qs2. 
+// The function probably also needs a bijection between qs1 and qs2 as input.
 let relabel_indices #qs1 qs2 s = admit()
-// let rename_qubit #qs q1 q2 (v : qvec qs) : qvec (qs `minus` q1 `union` q2)
-//   = reorder_indices (as_list qs) (as_list (qs `minus` q1 `union` q2)) v
 
 let gate (qs:qbits) = matrix complex (dimension qs) (dimension qs) 
 
@@ -115,31 +101,18 @@ let cnot (q1:qbit) (q2:qbit{q1 <> q2})
 
 let apply (#qs:qbits) (g:gate qs) (v:qvec qs) = matrix_mul g v
 
+// Idea: tensor the gate g with an idntity matrix over |qs'| qubits, and then
+// apply a permutation matrix to maintain the qubit ordering invariant.
 let lift (qs:qbits) (qs':qbits) (g:gate qs)
-  = // matrix_mul (build_sort_matrix (as_list qs ++ as_list qs')) 
-    //            (kronecker_product g (id_matrix complex (dimension qs') (dimension qs')))
-    admit()
+  = admit()
 
 let lift_preserves_frame (qs:qbits) (qs':qbits{qs' `disjoint` qs}) (g:gate qs) 
                          (v : qvec qs) (v' : qvec qs')
   : Lemma (ensures (apply (lift qs qs' g) (v `tensor` v') == apply g v `tensor` v'))
-  = // requires proving that (kron * reorder) * (kron * reorder) is the same as (kron * reorder),
-    admit()
+  = admit()
 
 let hadamard_self_adjoint (q:qbit)
   : Lemma (ensures self_adjoint (hadamard q))
-  = admit()
-
-let pauli_x_self_adjoint (q:qbit)
-  : Lemma (ensures self_adjoint (pauli_x q))
-  = admit()
-
-let pauli_z_self_adjoint (q:qbit)
-  : Lemma (ensures self_adjoint (pauli_z q))
-  = admit()
-
-let cnot_self_adjoint (q1:qbit) (q2:qbit{q1 <> q2})
-  : Lemma (ensures self_adjoint (cnot q1 q2))
   = admit()
 
 let scale (#qs:qbits) (c:complex) (v:qvec qs) : qvec qs = Matrix.scale c v
